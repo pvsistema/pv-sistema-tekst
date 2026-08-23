@@ -63,6 +63,10 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			fontFamily: {
+				display: ['"Playfair Display"', 'Georgia', 'serif'],
+				body: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
@@ -84,11 +88,41 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				rise: {
+					from: { opacity: '0', transform: 'translateY(16px)' },
+					to: { opacity: '1', transform: 'none' }
+				},
+				sheetin: {
+					from: { opacity: '0', transform: 'translateY(38px)' },
+					to: { opacity: '1', transform: 'none' }
+				},
+				blink: {
+					'0%, 49%': { opacity: '1' },
+					'50%, 100%': { opacity: '0' }
+				},
+				'fade-in': {
+					from: { opacity: '0', transform: 'translateY(10px)' },
+					to: { opacity: '1', transform: 'none' }
+				},
+				'scale-in': {
+					from: { opacity: '0', transform: 'scale(0.96)' },
+					to: { opacity: '1', transform: 'scale(1)' }
+				},
+				'slide-in-right': {
+					from: { transform: 'translateX(100%)' },
+					to: { transform: 'translateX(0)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				rise: 'rise .7s cubic-bezier(.22,.68,.28,1) both',
+				sheetin: 'sheetin .9s cubic-bezier(.22,.68,.28,1) both',
+				blink: 'blink 1.15s steps(1,end) infinite',
+				'fade-in': 'fade-in 0.3s ease-out both',
+				'scale-in': 'scale-in 0.2s ease-out both',
+				'slide-in-right': 'slide-in-right 0.3s ease-out both'
 			}
 		}
 	},
