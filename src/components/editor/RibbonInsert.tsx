@@ -1,0 +1,267 @@
+import Icon from '@/components/ui/icon';
+import { RibbonGroup } from './RibbonControls';
+import type { TabActions } from './RibbonTabs';
+
+/** Большая кнопка ленты с подписью в две строки и стрелкой раскрытия */
+const BigCmd = ({
+  icon,
+  lines,
+  caret,
+  onClick,
+  width = 56,
+  glyph,
+}: {
+  icon?: string;
+  lines: string[];
+  caret?: boolean;
+  onClick?: () => void;
+  width?: number;
+  glyph?: string;
+}) => (
+  <button
+    type="button"
+    title={lines.join(' ')}
+    onMouseDown={(e) => e.preventDefault()}
+    onClick={onClick}
+    className="win-btn h-[68px] flex-col justify-start gap-[3px] px-1 pt-1"
+    style={{ width }}
+  >
+    {glyph ? (
+      <span className="flex h-[26px] items-center text-[22px] leading-none">
+        {glyph}
+      </span>
+    ) : (
+      <Icon name={icon ?? 'Square'} size={24} className="text-[hsl(215_60%_38%)]" />
+    )}
+    <span className="flex flex-col items-center text-[10px] leading-[1.15]">
+      {lines.map((l, i) => (
+        <span key={i}>{l}</span>
+      ))}
+      {caret && <Icon name="ChevronDown" size={9} className="mt-[1px]" />}
+    </span>
+  </button>
+);
+
+/** Маленькая кнопка со значком и подписью в строку */
+const SmallCmd = ({
+  icon,
+  label,
+  caret,
+  onClick,
+  glyph,
+}: {
+  icon?: string;
+  label: string;
+  caret?: boolean;
+  onClick?: () => void;
+  glyph?: string;
+}) => (
+  <button
+    type="button"
+    title={label}
+    onMouseDown={(e) => e.preventDefault()}
+    onClick={onClick}
+    className="win-btn h-[20px] w-full shrink-0 justify-start gap-1.5 whitespace-nowrap px-1"
+  >
+    {glyph ? (
+      <span className="w-[15px] shrink-0 text-center text-[12px] leading-none">
+        {glyph}
+      </span>
+    ) : (
+      <Icon
+        name={icon ?? 'Square'}
+        size={14}
+        className="shrink-0 text-[hsl(215_60%_38%)]"
+      />
+    )}
+    <span className="text-[11px] leading-none">{label}</span>
+    {caret && <Icon name="ChevronDown" size={9} className="ml-auto shrink-0" />}
+  </button>
+);
+
+const Stack = ({
+  children,
+  width = 132,
+}: {
+  children: React.ReactNode;
+  width?: number;
+}) => (
+  <div
+    className="flex shrink-0 flex-col justify-center gap-[2px]"
+    style={{ width }}
+  >
+    {children}
+  </div>
+);
+
+const RibbonInsert = (p: TabActions) => {
+  const html = (markup: string) => p.onCommand('insertHTML', markup);
+
+  const insertCoverPage = () =>
+    html(
+      '<div style="text-align:center;padding:120px 0"><h1 style="font-size:32px">Название документа</h1><p style="font-size:15px;color:#555">Подзаголовок</p><p style="margin-top:80px">Автор · ' +
+        new Date().toLocaleDateString('ru-RU') +
+        '</p></div><hr>',
+    );
+
+  const insertLink = () => {
+    const url = window.prompt('Адрес ссылки', 'https://');
+    if (url) p.onCommand('createLink', url);
+  };
+
+  const insertChart = () =>
+    html(
+      '<table style="width:60%"><tr><th>Показатель</th><th>Значение</th></tr><tr><td>Январь</td><td>120</td></tr><tr><td>Февраль</td><td>180</td></tr><tr><td>Март</td><td>240</td></tr></table><p><br></p>',
+    );
+
+  const insertTextBox = () =>
+    html(
+      '<div style="border:1px solid #7f7f7f;padding:10px;margin:8px 0;width:60%">Текстовое поле — введите текст</div><p><br></p>',
+    );
+
+  const insertWordArt = () =>
+    html(
+      '<p style="font-size:34px;font-weight:700;color:#2f5496;text-shadow:1px 1px 0 #bfbfbf">Заголовок</p>',
+    );
+
+  const insertDropCap = () => p.onCommand('formatBlock', 'h1');
+
+  const insertHeader = () =>
+    html(
+      '<div style="border-bottom:1px solid #bfbfbf;color:#595959;font-size:12px;padding-bottom:4px;margin-bottom:12px">Верхний колонтитул</div>',
+    );
+
+  const insertFooter = () =>
+    html(
+      '<div style="border-top:1px solid #bfbfbf;color:#595959;font-size:12px;padding-top:4px;margin-top:12px">Нижний колонтитул</div>',
+    );
+
+  const insertPageNumber = () =>
+    html('<p style="text-align:center;color:#595959;font-size:12px">— 1 —</p>');
+
+  const insertComment = () =>
+    html('<span style="background:#fff2cc;border-bottom:1px dashed #bf9000">примечание</span>');
+
+  const insertDate = () =>
+    p.onCommand('insertText', new Date().toLocaleDateString('ru-RU'));
+
+  const insertSignature = () =>
+    html(
+      '<p style="margin-top:32px">_______________________ / _______________________</p><p style="font-size:11px;color:#595959">подпись&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;расшифровка</p>',
+    );
+
+  const insertSymbol = () => {
+    const s = window.prompt('Символ для вставки', '§');
+    if (s) p.onCommand('insertText', s);
+  };
+
+  const insertEquation = () => p.onCommand('insertText', 'x = (−b ± √(b² − 4ac)) / 2a');
+
+  return (
+    <>
+      <RibbonGroup title="Страницы">
+        <BigCmd
+          icon="FileType2"
+          lines={['Титульная', 'страница']}
+          caret
+          onClick={insertCoverPage}
+          width={60}
+        />
+        <BigCmd
+          icon="File"
+          lines={['Пустая', 'страница']}
+          onClick={() => html('<hr><p><br></p>')}
+          width={54}
+        />
+        <BigCmd
+          icon="SeparatorHorizontal"
+          lines={['Разрыв', 'страницы']}
+          onClick={() => p.onCommand('insertHorizontalRule')}
+          width={58}
+        />
+      </RibbonGroup>
+
+      <RibbonGroup title="Таблицы">
+        <BigCmd icon="Table" lines={['Таблица']} caret onClick={p.onInsertTable} />
+      </RibbonGroup>
+
+      <RibbonGroup title="Иллюстрации">
+        <BigCmd icon="Image" lines={['Рисунки']} onClick={p.onInsertImage} />
+        <BigCmd
+          icon="Shapes"
+          lines={['Фигуры']}
+          caret
+          onClick={() => html('<div style="width:120px;height:60px;border:2px solid #2f5496;border-radius:4px;margin:8px 0"></div>')}
+        />
+        <BigCmd icon="Sparkles" lines={['Значки']} onClick={() => p.onCommand('insertText', '★')} />
+        <BigCmd
+          icon="Box"
+          lines={['Трехмерные', 'модели']}
+          caret
+          onClick={() => p.onCommand('insertText', '◈')}
+          width={64}
+        />
+        <BigCmd icon="Network" lines={['SmartArt']} onClick={insertChart} />
+        <BigCmd icon="ChartColumn" lines={['Диаграмма']} onClick={insertChart} width={62} />
+        <BigCmd icon="Camera" lines={['Снимок']} caret onClick={p.onInsertImage} />
+      </RibbonGroup>
+
+      <RibbonGroup title="Надстройки">
+        <Stack width={146}>
+          <SmallCmd icon="Store" label="Получить надстройки" />
+          <SmallCmd icon="LayoutGrid" label="Мои надстройки" caret />
+        </Stack>
+        <BigCmd glyph="W" lines={['Википедия']} width={62} />
+      </RibbonGroup>
+
+      <RibbonGroup title="Мультимедиа">
+        <BigCmd icon="Video" lines={['Видео из', 'Интернета']} width={62} onClick={insertLink} />
+      </RibbonGroup>
+
+      <RibbonGroup title="Ссылки">
+        <BigCmd icon="Link" lines={['Ссылка']} onClick={insertLink} />
+        <BigCmd
+          icon="Bookmark"
+          lines={['Закладка']}
+          onClick={() => html('<a id="bookmark"></a>')}
+          width={60}
+        />
+        <BigCmd
+          icon="ArrowLeftRight"
+          lines={['Перекрестная', 'ссылка']}
+          onClick={insertLink}
+          width={72}
+        />
+      </RibbonGroup>
+
+      <RibbonGroup title="Примечания">
+        <BigCmd icon="MessageSquarePlus" lines={['Примечание']} width={68} onClick={insertComment} />
+      </RibbonGroup>
+
+      <RibbonGroup title="Колонтитулы">
+        <BigCmd icon="PanelTop" lines={['Верхний', 'колонтитул']} caret width={66} onClick={insertHeader} />
+        <BigCmd icon="PanelBottom" lines={['Нижний', 'колонтитул']} caret width={66} onClick={insertFooter} />
+        <BigCmd icon="Hash" lines={['Номер', 'страницы']} caret width={58} onClick={insertPageNumber} />
+      </RibbonGroup>
+
+      <RibbonGroup title="Текст">
+        <BigCmd icon="TextCursorInput" lines={['Текстовое', 'поле']} caret width={60} onClick={insertTextBox} />
+        <BigCmd icon="Newspaper" lines={['Экспресс-', 'блоки']} caret width={60} onClick={insertTextBox} />
+        <BigCmd glyph="𝓐" lines={['WordArt']} caret width={54} onClick={insertWordArt} />
+        <BigCmd icon="ALargeSmall" lines={['Буквица']} caret width={54} onClick={insertDropCap} />
+        <Stack>
+          <SmallCmd icon="PenLine" label="Строки подписи" caret onClick={insertSignature} />
+          <SmallCmd icon="CalendarDays" label="Дата и время" onClick={insertDate} />
+          <SmallCmd icon="Package" label="Объект" caret onClick={insertTextBox} />
+        </Stack>
+      </RibbonGroup>
+
+      <RibbonGroup title="Символы">
+        <BigCmd glyph="π" lines={['Уравнение']} caret width={62} onClick={insertEquation} />
+        <BigCmd glyph="Ω" lines={['Символ']} caret onClick={insertSymbol} />
+      </RibbonGroup>
+    </>
+  );
+};
+
+export default RibbonInsert;

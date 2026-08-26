@@ -1,7 +1,7 @@
 import Icon from '@/components/ui/icon';
 import RibbonHome, { RibbonHomeProps } from './RibbonHome';
+import RibbonInsert from './RibbonInsert';
 import {
-  RibbonInsert,
   RibbonDesign,
   RibbonLayout,
   RibbonLinks,

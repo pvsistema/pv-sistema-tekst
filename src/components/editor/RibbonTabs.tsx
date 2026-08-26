@@ -10,54 +10,6 @@ export interface TabActions {
   zoom: number;
 }
 
-export const RibbonInsert = (p: TabActions) => (
-  <>
-    <RibbonGroup title="Страницы">
-      <BigBtn icon="FilePlus2" label="Титульная страница" onClick={p.onNew} />
-      <BigBtn
-        icon="SeparatorHorizontal"
-        label="Разрыв страницы"
-        onClick={() => p.onCommand('insertHorizontalRule')}
-      />
-    </RibbonGroup>
-
-    <RibbonGroup title="Таблицы">
-      <BigBtn icon="Table" label="Таблица" onClick={p.onInsertTable} />
-    </RibbonGroup>
-
-    <RibbonGroup title="Иллюстрации">
-      <BigBtn icon="Image" label="Рисунки" onClick={p.onInsertImage} />
-      <BigBtn icon="Shapes" label="Фигуры" onClick={() => p.onCommand('insertHorizontalRule')} />
-    </RibbonGroup>
-
-    <RibbonGroup title="Ссылки">
-      <BigBtn
-        icon="Link"
-        label="Гиперссылка"
-        onClick={() => {
-          const url = window.prompt('Адрес ссылки', 'https://');
-          if (url) p.onCommand('createLink', url);
-        }}
-      />
-    </RibbonGroup>
-
-    <RibbonGroup title="Текст">
-      <VStack>
-        <SmallBtn icon="Type" title="Экспресс-блоки" label="Экспресс-блоки" onClick={() => p.onCommand('bold')} />
-        <SmallBtn icon="Baseline" title="Буквица" label="Буквица" onClick={() => p.onCommand('formatBlock', 'h1')} />
-        <SmallBtn icon="CalendarDays" title="Дата и время" label="Дата и время" onClick={() => p.onCommand('insertText', new Date().toLocaleDateString('ru-RU'))} />
-      </VStack>
-    </RibbonGroup>
-
-    <RibbonGroup title="Символы">
-      <VStack>
-        <SmallBtn icon="Sigma" title="Формула" label="Формула" onClick={() => p.onCommand('insertText', '∑')} />
-        <SmallBtn icon="Asterisk" title="Символ" label="Символ" onClick={() => p.onCommand('insertText', '§')} />
-      </VStack>
-    </RibbonGroup>
-  </>
-);
-
 export const RibbonDesign = (p: TabActions) => (
   <>
     <RibbonGroup title="Форматирование документа">
