@@ -155,15 +155,20 @@
 @layer components {
   /* содержимое листа A4 */
   .pv-page h1 {
-    @apply mb-4 mt-2 font-display text-[26px] font-bold leading-tight tracking-[-0.02em];
+    @apply mb-3 mt-1 text-[22px] font-normal leading-tight text-[#2f5496];
   }
 
   .pv-page h2 {
-    @apply mb-3 mt-6 font-display text-[21px] font-bold leading-tight;
+    @apply mb-2 mt-4 text-[17px] font-normal leading-tight text-[#2f5496];
+  }
+
+  .pv-page h3,
+  .pv-page h4 {
+    @apply mb-2 mt-3 text-[15px] font-normal text-[#1f3864];
   }
 
   .pv-page p {
-    @apply mb-3;
+    @apply mb-2;
   }
 
   .pv-page ul {
@@ -206,6 +211,46 @@
 
   .pv-page a {
     @apply text-primary underline;
+  }
+}
+
+@layer base {
+  :root {
+    /* ── палитра рабочего окна (стиль офисного пакета) ── */
+    --win-title: 215 78% 33%;
+    --win-title-text: 0 0% 100%;
+    --win-ribbon: 0 0% 100%;
+    --win-ribbon-border: 0 0% 84%;
+    --win-tab-active: 215 78% 33%;
+    --win-canvas: 0 0% 51%;
+    --win-status: 215 78% 33%;
+    --win-hover: 210 30% 92%;
+    --win-group-label: 0 0% 40%;
+  }
+}
+
+@layer components {
+  .win-btn {
+    @apply flex items-center justify-center rounded-[2px] border border-transparent text-[hsl(0_0%_20%)] transition-colors;
+  }
+
+  .win-btn:hover {
+    background: hsl(var(--win-hover));
+    border-color: hsl(var(--win-ribbon-border));
+  }
+
+  .win-btn[data-active="true"] {
+    background: hsl(var(--win-hover));
+    border-color: hsl(var(--win-ribbon-border));
+  }
+
+  .win-group {
+    @apply flex h-[72px] flex-col justify-between border-r border-[hsl(var(--win-ribbon-border))] px-2 pb-0.5 pt-1;
+  }
+
+  .win-group-title {
+    @apply text-center text-[10px] leading-none;
+    color: hsl(var(--win-group-label));
   }
 }
 
