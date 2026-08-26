@@ -10,37 +10,6 @@ export interface TabActions {
   zoom: number;
 }
 
-export const RibbonDesign = (p: TabActions) => (
-  <>
-    <RibbonGroup title="Форматирование документа">
-      <BigBtn icon="Palette" label="Темы" onClick={() => p.onCommand('removeFormat')} />
-      <BigBtn icon="SwatchBook" label="Цвета" onClick={() => p.onCommand('foreColor', '#1f3864')} />
-      <BigBtn icon="Type" label="Шрифты" onClick={() => p.onCommand('fontName', 'Georgia')} />
-    </RibbonGroup>
-    <RibbonGroup title="Фон страницы">
-      <BigBtn icon="Droplets" label="Подложка" onClick={() => p.onCommand('hiliteColor', '#f2f2f2')} />
-      <BigBtn icon="Square" label="Границы страниц" onClick={() => p.onCommand('justifyLeft')} />
-    </RibbonGroup>
-  </>
-);
-
-export const RibbonLayout = (p: TabActions) => (
-  <>
-    <RibbonGroup title="Параметры страницы">
-      <BigBtn icon="Scan" label="Поля" onClick={() => p.onCommand('justifyLeft')} />
-      <BigBtn icon="RectangleVertical" label="Ориентация" onClick={() => p.onCommand('justifyLeft')} />
-      <BigBtn icon="FileText" label="Размер A4" onClick={() => p.onCommand('justifyLeft')} />
-      <BigBtn icon="Columns3" label="Колонки" onClick={() => p.onCommand('justifyFull')} />
-    </RibbonGroup>
-    <RibbonGroup title="Абзац">
-      <VStack>
-        <SmallBtn icon="IndentIncrease" title="Отступ слева" label="Отступ слева" onClick={() => p.onCommand('indent')} />
-        <SmallBtn icon="IndentDecrease" title="Отступ справа" label="Отступ справа" onClick={() => p.onCommand('outdent')} />
-      </VStack>
-    </RibbonGroup>
-  </>
-);
-
 export const RibbonLinks = (p: TabActions) => (
   <>
     <RibbonGroup title="Оглавление">

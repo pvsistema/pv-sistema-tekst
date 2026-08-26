@@ -1,9 +1,9 @@
 import Icon from '@/components/ui/icon';
 import RibbonHome, { RibbonHomeProps } from './RibbonHome';
 import RibbonInsert from './RibbonInsert';
+import RibbonDesign, { DesignProps } from './RibbonDesign';
+import RibbonLayout, { LayoutProps } from './RibbonLayout';
 import {
-  RibbonDesign,
-  RibbonLayout,
   RibbonLinks,
   RibbonMailings,
   RibbonReview,
@@ -26,7 +26,7 @@ export const TABS = [
 
 export type RibbonTab = (typeof TABS)[number];
 
-interface Props extends RibbonHomeProps, TabActions {
+interface Props extends RibbonHomeProps, TabActions, DesignProps, LayoutProps {
   tab: RibbonTab;
   onTab: (t: RibbonTab) => void;
   onFileMenu: () => void;
@@ -94,8 +94,8 @@ const Ribbon = (p: Props) => {
       <div className="flex items-stretch overflow-x-auto px-1">
         {p.tab === 'Главная' && <RibbonHome {...p} />}
         {p.tab === 'Вставка' && <RibbonInsert {...actions} />}
-        {p.tab === 'Конструктор' && <RibbonDesign {...actions} />}
-        {p.tab === 'Макет' && <RibbonLayout {...actions} />}
+        {p.tab === 'Конструктор' && <RibbonDesign {...p} />}
+        {p.tab === 'Макет' && <RibbonLayout {...p} />}
         {p.tab === 'Ссылки' && <RibbonLinks {...actions} />}
         {p.tab === 'Рассылки' && <RibbonMailings {...actions} />}
         {p.tab === 'Рецензирование' && <RibbonReview {...actions} />}

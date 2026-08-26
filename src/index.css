@@ -154,21 +154,33 @@
 
 @layer components {
   /* содержимое листа A4 */
+  .pv-page h1,
+  .pv-page h2,
+  .pv-page h3,
+  .pv-page h4 {
+    font-family: var(--pv-h-font, inherit);
+    color: var(--pv-h-color, #2f5496);
+    text-transform: var(--pv-h-transform, none);
+    background: var(--pv-h-fill, transparent);
+    @apply font-normal leading-tight;
+  }
+
   .pv-page h1 {
-    @apply mb-3 mt-1 text-[22px] font-normal leading-tight text-[#2f5496];
+    @apply mb-3 mt-1 text-[22px];
   }
 
   .pv-page h2 {
-    @apply mb-2 mt-4 text-[17px] font-normal leading-tight text-[#2f5496];
+    @apply mb-2 mt-4 text-[17px];
   }
 
   .pv-page h3,
   .pv-page h4 {
-    @apply mb-2 mt-3 text-[15px] font-normal text-[#1f3864];
+    @apply mb-2 mt-3 text-[15px];
   }
 
   .pv-page p {
-    @apply mb-2;
+    margin-top: var(--pv-p-before, 0);
+    margin-bottom: var(--pv-p-after, 8px);
   }
 
   .pv-page ul {

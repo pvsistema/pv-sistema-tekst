@@ -5,10 +5,12 @@ import WindowTitleBar from '@/components/editor/WindowTitleBar';
 import Ribbon, { RibbonTab } from '@/components/editor/Ribbon';
 import DocRuler from '@/components/editor/DocRuler';
 import DocumentCanvas, {
-  PAGE_CONTENT_HEIGHT,
-  PAGE_PADDING,
+  CM,
+  PAGE_HEIGHT,
   PAGE_WIDTH,
 } from '@/components/editor/DocumentCanvas';
+import { THEMES, DocTheme } from '@/components/editor/RibbonDesign';
+import { DEFAULT_SETUP, PageSetup } from '@/components/editor/RibbonLayout';
 import FindReplaceDialog from '@/components/editor/FindReplaceDialog';
 import StatusBar from '@/components/editor/StatusBar';
 import FileMenu from '@/components/editor/FileMenu';
@@ -42,15 +44,32 @@ const Editor = () => {
   const [fontSize, setFontSize] = useState('11');
   const [stats, setStats] = useState({ words: 0, chars: 0, pages: 1 });
 
+  /* конструктор */
+  const [theme, setTheme] = useState<DocTheme>(THEMES[0]);
+  const [paraSpacing, setParaSpacing] = useState(8);
+  const [watermark, setWatermark] = useState('');
+  const [pageColor, setPageColor] = useState('#ffffff');
+  const [pageBorder, setPageBorder] = useState(false);
+
+  /* макет */
+  const [setup, setSetup] = useState<PageSetup>(DEFAULT_SETUP);
+  const patchSetup = useCallback(
+    (patch: Partial<PageSetup>) => setSetup((s) => ({ ...s, ...patch })),
+    [],
+  );
+
+  const pageHeight = setup.landscape ? PAGE_WIDTH : PAGE_HEIGHT;
+  const contentHeight = pageHeight - setup.margin * CM * 2;
+
   const recount = useCallback(() => {
     const el = editorRef.current;
     if (!el) return;
     const text = el.innerText.replace(/\u00a0/g, ' ');
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     const chars = text.replace(/\n/g, '').length;
-    const pages = Math.max(1, Math.ceil(el.scrollHeight / PAGE_CONTENT_HEIGHT));
+    const pages = Math.max(1, Math.ceil(el.scrollHeight / contentHeight));
     setStats({ words, chars, pages });
-  }, []);
+  }, [contentHeight]);
 
   useEffect(() => {
     if (editorRef.current && active) {
@@ -111,7 +130,7 @@ const Editor = () => {
     const top = e.currentTarget.scrollTop;
     const page = Math.min(
       stats.pages,
-      Math.max(1, Math.floor(top / ((PAGE_CONTENT_HEIGHT * zoom) / 100)) + 1),
+      Math.max(1, Math.floor(top / ((contentHeight * zoom) / 100)) + 1),
     );
     setCurrentPage(page);
   };
@@ -324,9 +343,25 @@ const Editor = () => {
         onNew={handleNew}
         onZoom={setZoom}
         zoom={zoom}
+        theme={theme}
+        onTheme={setTheme}
+        paraSpacing={paraSpacing}
+        onParaSpacing={setParaSpacing}
+        watermark={watermark}
+        onWatermark={setWatermark}
+        pageColor={pageColor}
+        onPageColor={setPageColor}
+        pageBorder={pageBorder}
+        onPageBorder={setPageBorder}
+        setup={setup}
+        onSetup={patchSetup}
       />
 
-      <DocRuler zoom={zoom} pageWidth={PAGE_WIDTH} padding={PAGE_PADDING} />
+      <DocRuler
+        zoom={zoom}
+        pageWidth={setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH}
+        padding={setup.margin * CM}
+      />
 
       <DocumentCanvas
         ref={editorRef}
@@ -334,6 +369,12 @@ const Editor = () => {
         pages={stats.pages}
         onInput={recount}
         onScroll={onCanvasScroll}
+        theme={theme}
+        setup={setup}
+        paraSpacing={paraSpacing}
+        watermark={watermark}
+        pageColor={pageColor}
+        pageBorder={pageBorder}
       />
 
       <StatusBar
