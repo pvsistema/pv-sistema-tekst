@@ -3,6 +3,9 @@ import Icon from '@/components/ui/icon';
 import type { PvDocument } from '@/hooks/use-documents';
 import { TEMPLATES, DocTemplate } from './fileTemplates';
 import TemplateThumb from './TemplateThumb';
+import PrintPane from './PrintPane';
+import type { DocTheme } from './RibbonDesign';
+import type { PageSetup } from './RibbonLayout';
 
 interface Props {
   open: boolean;
@@ -22,6 +25,11 @@ interface Props {
   onTitle: (v: string) => void;
   pinned: string[];
   onTogglePin: (id: string) => void;
+  theme: DocTheme;
+  setup: PageSetup;
+  onSetup: (patch: Partial<PageSetup>) => void;
+  pages: number;
+  getHtml: () => string;
 }
 
 const NAV = [
@@ -287,7 +295,11 @@ const FileMenu = (p: Props) => {
       </div>
 
       {/* правая область */}
-      <div className="flex-1 overflow-auto bg-white px-8 py-5">
+      <div
+        className={`flex-1 bg-white px-8 py-5 ${
+          section === 'print' ? 'min-h-0 overflow-hidden' : 'overflow-auto'
+        }`}
+      >
         {section === 'home' && (
           <>
             <h2 className="mb-6 text-[26px] font-light text-[hsl(0_0%_20%)]">
@@ -399,17 +411,20 @@ const FileMenu = (p: Props) => {
         )}
 
         {section === 'print' && (
-          <>
+          <div className="flex h-full min-h-0 flex-col">
             <SectionTitle>Печать</SectionTitle>
-            <button
-              type="button"
-              onClick={p.onPrint}
-              className="flex items-center gap-2 rounded-[2px] px-4 py-2 text-[13px] text-white"
-              style={{ background: 'hsl(var(--win-title))' }}
-            >
-              <Icon name="Printer" size={16} /> Печать документа
-            </button>
-          </>
+            <div className="min-h-0 flex-1">
+              <PrintPane
+                getHtml={p.getHtml}
+                theme={p.theme}
+                setup={p.setup}
+                onSetup={p.onSetup}
+                pages={p.pages}
+                onPrint={p.onPrint}
+                onOptions={() => setSection('info')}
+              />
+            </div>
+          </div>
         )}
 
         {section === 'share' && (

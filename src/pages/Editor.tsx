@@ -432,6 +432,11 @@ const Editor = () => {
         onPrint={handlePrint}
         title={active?.title ?? ''}
         onTitle={(v) => active && updateDocument(active.id, { title: v })}
+        theme={theme}
+        setup={setup}
+        onSetup={patchSetup}
+        pages={stats.pages}
+        getHtml={() => editorRef.current?.innerHTML ?? active?.html ?? ''}
       />
 
       <FindReplaceDialog
