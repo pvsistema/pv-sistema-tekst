@@ -14,6 +14,7 @@ import { DEFAULT_SETUP, PageSetup } from '@/components/editor/RibbonLayout';
 import FindReplaceDialog from '@/components/editor/FindReplaceDialog';
 import StatusBar from '@/components/editor/StatusBar';
 import FileMenu from '@/components/editor/FileMenu';
+import type { DocTemplate } from '@/components/editor/fileTemplates';
 import { FONT_VALUE } from '@/components/editor/RibbonHome';
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -37,6 +38,13 @@ const Editor = () => {
   const [zoom, setZoom] = useState(100);
   const [tab, setTab] = useState<RibbonTab>('Главная');
   const [fileMenu, setFileMenu] = useState(false);
+  const [pinned, setPinned] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('pv-tekst-pinned') ?? '[]');
+    } catch {
+      return [];
+    }
+  });
   const [findOpen, setFindOpen] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -141,6 +149,25 @@ const Editor = () => {
     createDocument();
     toast({ title: 'Создан новый документ' });
   };
+
+  const handleTemplate = (t: DocTemplate) => {
+    persist();
+    importDocument(t.title === 'Новый документ' ? 'Документ 1' : t.title, t.html);
+    toast({ title: 'Документ создан', description: t.title });
+  };
+
+  const togglePin = (id: string) =>
+    setPinned((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id];
+      try {
+        localStorage.setItem('pv-tekst-pinned', JSON.stringify(next));
+      } catch {
+        /* хранилище недоступно */
+      }
+      return next;
+    });
 
   const handleOpen = () => fileRef.current?.click();
 
@@ -395,6 +422,9 @@ const Editor = () => {
         onSelect={setActiveId}
         onRemove={removeDocument}
         onNew={handleNew}
+        onTemplate={handleTemplate}
+        pinned={pinned}
+        onTogglePin={togglePin}
         onOpen={handleOpen}
         onSave={handleSave}
         onExportHtml={handleExportHtml}
