@@ -276,6 +276,17 @@
     @apply underline decoration-dotted;
   }
 
+  /* знаки форматирования из «Параметров» */
+  .pv-page.pv-marks p::after {
+    content: "¶";
+    @apply ml-[2px] text-[hsl(210_50%_60%)];
+  }
+
+  .pv-page.pv-marks li::after {
+    content: "¶";
+    @apply ml-[2px] text-[hsl(210_50%_60%)];
+  }
+
   /* режим «Структура» вкладки «Вид» */
   .pv-page.pv-outline p,
   .pv-page.pv-outline li {

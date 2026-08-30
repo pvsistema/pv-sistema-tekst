@@ -21,7 +21,7 @@ const QuickBtn = ({
     title={title}
     onMouseDown={(e) => e.preventDefault()}
     onClick={onClick}
-    className="flex h-6 w-6 items-center justify-center rounded-[2px] text-white/90 transition-colors hover:bg-white/20"
+    className="flex h-6 w-6 items-center justify-center rounded-[2px] opacity-90 transition-colors hover:bg-black/10"
   >
     <Icon name={icon} size={14} />
   </button>
@@ -29,8 +29,11 @@ const QuickBtn = ({
 
 const WindowTitleBar = ({ title, onSave, onUndo, onRedo }: Props) => (
   <div
-    className="flex h-8 shrink-0 items-center px-1.5 text-white"
-    style={{ background: 'hsl(var(--win-title))' }}
+    className="flex h-8 shrink-0 items-center px-1.5"
+    style={{
+      background: 'hsl(var(--win-title))',
+      color: 'hsl(var(--win-title-text))',
+    }}
   >
     <div className="flex items-center gap-0.5">
       <QuickBtn icon="Save" title="Сохранить" onClick={onSave} />

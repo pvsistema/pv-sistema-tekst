@@ -30,6 +30,7 @@ interface Props {
   onSetup: (patch: Partial<PageSetup>) => void;
   pages: number;
   getHtml: () => string;
+  onOptions: () => void;
 }
 
 const NAV = [
@@ -283,7 +284,9 @@ const FileMenu = (p: Props) => {
             <button
               key={b.key}
               type="button"
-              onClick={() => setSection(b.key)}
+              onClick={() =>
+                b.key === 'options' ? p.onOptions() : setSection(b.key)
+              }
               className={`flex w-full items-center py-[6px] pl-4 pr-3 text-left text-[13px] ${
                 section === b.key ? 'bg-white/25' : 'hover:bg-white/15'
               }`}
@@ -476,15 +479,7 @@ const FileMenu = (p: Props) => {
           </>
         )}
 
-        {section === 'options' && (
-          <>
-            <SectionTitle>Параметры</SectionTitle>
-            <div className="space-y-1 text-[13px] text-[hsl(0_0%_30%)]">
-              <div>Язык интерфейса: русский</div>
-              <div>Автосохранение: включено</div>
-            </div>
-          </>
-        )}
+
       </div>
     </div>
   );

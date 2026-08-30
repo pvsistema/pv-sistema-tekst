@@ -19,6 +19,8 @@ import { useReferences } from '@/hooks/use-references';
 import { useReview } from '@/hooks/use-review';
 import type { ViewMode } from '@/components/editor/RibbonView';
 import NavigationPane from '@/components/editor/NavigationPane';
+import OptionsDialog from '@/components/editor/OptionsDialog';
+import { useAppOptions } from '@/hooks/use-app-options';
 import { FONT_VALUE } from '@/components/editor/RibbonHome';
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -63,6 +65,10 @@ const Editor = () => {
   const [pageColor, setPageColor] = useState('#ffffff');
   const [pageBorder, setPageBorder] = useState(false);
 
+  /* параметры приложения */
+  const { options, setOptions, reset: resetOptions } = useAppOptions();
+  const [optionsOpen, setOptionsOpen] = useState(false);
+
   /* вид */
   const [viewMode, setViewMode] = useState<ViewMode>('print');
   const [showRuler, setShowRuler] = useState(true);
@@ -106,13 +112,23 @@ const Editor = () => {
   }, [active, updateDocument]);
 
   useEffect(() => {
+    if (!options.autoSave) return;
     const id = window.setInterval(() => {
       if (editorRef.current && active) {
         updateDocument(active.id, { html: editorRef.current.innerHTML });
+        setSavedAt(Date.now());
       }
-    }, 8000);
+    }, Math.max(1, options.autoSaveMinutes) * 60_000);
     return () => window.clearInterval(id);
-  }, [active, updateDocument]);
+  }, [active, updateDocument, options.autoSave, options.autoSaveMinutes]);
+
+  /* знаки форматирования и подсветка ошибок из параметров */
+  useEffect(() => {
+    const root = editorRef.current;
+    if (!root) return;
+    root.classList.toggle('pv-marks', options.showFormatMarks);
+    root.spellcheck = options.checkSpelling && !options.hideSpellErrors;
+  }, [options.showFormatMarks, options.checkSpelling, options.hideSpellErrors, viewMode]);
 
   const exec = useCallback(
     (command: string, value?: string) => {
@@ -576,14 +592,31 @@ const Editor = () => {
         />
       </div>
 
-      <StatusBar
-        words={stats.words}
-        chars={stats.chars}
-        pages={stats.pages}
-        currentPage={currentPage}
-        zoom={zoom}
-        onZoom={setZoom}
-        savedAt={savedAt}
+      {options.showStatusBar && (
+        <StatusBar
+          words={stats.words}
+          chars={stats.chars}
+          pages={stats.pages}
+          currentPage={currentPage}
+          zoom={zoom}
+          onZoom={setZoom}
+          savedAt={savedAt}
+        />
+      )}
+
+      <OptionsDialog
+        open={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        options={options}
+        onApply={(o) => {
+          setOptions(o);
+          setOptionsOpen(false);
+          toast({ title: 'Параметры сохранены' });
+        }}
+        onReset={() => {
+          resetOptions();
+          toast({ title: 'Параметры сброшены' });
+        }}
       />
 
       <FileMenu
@@ -609,6 +642,10 @@ const Editor = () => {
         onSetup={patchSetup}
         pages={stats.pages}
         getHtml={() => editorRef.current?.innerHTML ?? active?.html ?? ''}
+        onOptions={() => {
+          setFileMenu(false);
+          setOptionsOpen(true);
+        }}
       />
 
       <FindReplaceDialog
