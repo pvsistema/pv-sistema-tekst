@@ -276,6 +276,27 @@
     @apply underline decoration-dotted;
   }
 
+  /* режим «Структура» вкладки «Вид» */
+  .pv-page.pv-outline p,
+  .pv-page.pv-outline li {
+    @apply text-[13px] text-[hsl(0_0%_45%)];
+  }
+
+  .pv-page.pv-outline h1::before,
+  .pv-page.pv-outline h2::before,
+  .pv-page.pv-outline h3::before {
+    content: "⊕ ";
+    @apply text-[hsl(0_0%_55%)];
+  }
+
+  .pv-page.pv-outline h2 {
+    @apply pl-6;
+  }
+
+  .pv-page.pv-outline h3 {
+    @apply pl-12;
+  }
+
   /* вкладка «Рецензирование» */
   .pv-page .pv-comment {
     @apply bg-[hsl(48_100%_90%)] decoration-[hsl(35_90%_50%)];

@@ -13,6 +13,10 @@ interface Props {
   watermark: string;
   pageColor: string;
   pageBorder: boolean;
+  viewMode?: 'read' | 'print' | 'web' | 'outline' | 'draft';
+  showGrid?: boolean;
+  pageFlow?: 'vertical' | 'horizontal';
+  splitView?: boolean;
 }
 
 /** Лист A4 при 96 dpi */
@@ -35,19 +39,65 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
       watermark,
       pageColor,
       pageBorder,
+      viewMode = 'print',
+      showGrid = false,
+      pageFlow = 'vertical',
+      splitView = false,
     },
     ref,
   ) => {
     const scale = zoom / 100;
+    const flat = viewMode === 'web' || viewMode === 'draft' || viewMode === 'outline';
     const width = setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH;
     const height = setup.landscape ? PAGE_WIDTH : PAGE_HEIGHT;
-    const pad = setup.margin * CM;
-    const contentHeight = height - pad * 2;
+    const pad = flat ? 24 : setup.margin * CM;
+    const contentHeight = height - setup.margin * CM * 2;
+
+    /* веб-документ, черновик и структура — единая лента без листа */
+    if (flat)
+      return (
+        <div
+          onScroll={onScroll}
+          className={`flex-1 overflow-auto ${splitView ? 'border-b-4 border-[hsl(0_0%_65%)]' : ''}`}
+          style={{
+            background: viewMode === 'web' ? pageColor : 'hsl(var(--win-canvas))',
+          }}
+        >
+          <div
+            ref={ref}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={onInput}
+            spellCheck
+            className={`pv-page mx-auto min-h-full outline-none ${
+              viewMode === 'outline' ? 'pv-outline' : ''
+            } ${viewMode === 'draft' ? 'bg-white' : ''}`}
+            style={
+              {
+                maxWidth: viewMode === 'web' ? 1100 : 900,
+                padding: pad,
+                fontFamily:
+                  viewMode === 'draft' ? 'Courier New, monospace' : theme.bodyFont,
+                color: theme.bodyColor,
+                fontSize: 15,
+                lineHeight: 1.5,
+                zoom: scale,
+                '--pv-h-font': theme.headingFont,
+                '--pv-h-color': theme.headingColor,
+                '--pv-h-transform': theme.headingUpper ? 'uppercase' : 'none',
+                '--pv-p-after': `${Math.max(setup.spaceAfter, paraSpacing)}px`,
+              } as React.CSSProperties
+            }
+          />
+        </div>
+      );
 
     return (
       <div
         onScroll={onScroll}
-        className="flex-1 overflow-auto"
+        className={`flex-1 ${
+          pageFlow === 'horizontal' ? 'overflow-x-auto overflow-y-hidden' : 'overflow-auto'
+        } ${splitView ? 'border-b-4 border-[hsl(0_0%_65%)]' : ''}`}
         style={{ background: 'hsl(var(--win-canvas))' }}
       >
         <div
@@ -64,7 +114,13 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
           >
             <div
               className="relative shadow-[0_1px_5px_rgba(0,0,0,0.35)]"
-              style={{ background: pageColor }}
+              style={{
+                background: pageColor,
+                backgroundImage: showGrid
+                  ? 'linear-gradient(hsl(210 40% 88%) 1px, transparent 1px), linear-gradient(90deg, hsl(210 40% 88%) 1px, transparent 1px)'
+                  : undefined,
+                backgroundSize: showGrid ? '18.9px 18.9px' : undefined,
+              }}
             >
               {watermark && (
                 <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden">

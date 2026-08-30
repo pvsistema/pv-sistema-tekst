@@ -17,6 +17,8 @@ import FileMenu from '@/components/editor/FileMenu';
 import type { DocTemplate } from '@/components/editor/fileTemplates';
 import { useReferences } from '@/hooks/use-references';
 import { useReview } from '@/hooks/use-review';
+import type { ViewMode } from '@/components/editor/RibbonView';
+import NavigationPane from '@/components/editor/NavigationPane';
 import { FONT_VALUE } from '@/components/editor/RibbonHome';
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -60,6 +62,14 @@ const Editor = () => {
   const [watermark, setWatermark] = useState('');
   const [pageColor, setPageColor] = useState('#ffffff');
   const [pageBorder, setPageBorder] = useState(false);
+
+  /* вид */
+  const [viewMode, setViewMode] = useState<ViewMode>('print');
+  const [showRuler, setShowRuler] = useState(true);
+  const [showGrid, setShowGrid] = useState(false);
+  const [showNav, setShowNav] = useState(false);
+  const [pageFlow, setPageFlow] = useState<'vertical' | 'horizontal'>('vertical');
+  const [splitView, setSplitView] = useState(false);
 
   /* макет */
   const [setup, setSetup] = useState<PageSetup>(DEFAULT_SETUP);
@@ -129,6 +139,59 @@ const Editor = () => {
     chars: stats.chars,
     pages: stats.pages,
   });
+
+  /* ── вкладка «Вид» ── */
+  const applyViewMode = (m: ViewMode) => {
+    setViewMode(m);
+    const names: Record<ViewMode, string> = {
+      read: 'Режим чтения',
+      print: 'Разметка страницы',
+      web: 'Веб-документ',
+      outline: 'Структура',
+      draft: 'Черновик',
+    };
+    if (m === 'read') setZoom(120);
+    if (m === 'print') setZoom(100);
+    toast({ title: names[m] });
+  };
+
+  const getHeadings = useCallback(() => {
+    const root = editorRef.current;
+    if (!root) return [];
+    return Array.from(root.querySelectorAll('h1, h2, h3')).map((h, i) => {
+      if (!h.id) h.id = `pv-nav-${i}`;
+      return {
+        id: h.id,
+        text: h.textContent ?? '',
+        level: Number(h.tagName[1]),
+      };
+    });
+  }, []);
+
+  const goToHeading = (id: string) =>
+    editorRef.current
+      ?.querySelector(`#${id}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const zoomDialog = () => {
+    const v = window.prompt('Масштаб, %', String(zoom));
+    const n = Number(v);
+    if (n >= 10 && n <= 500) setZoom(n);
+  };
+
+  const fitWidth = () => {
+    const box = editorRef.current?.closest('.flex-1');
+    const avail = (box?.clientWidth ?? 900) - 60;
+    const w = setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH;
+    setZoom(Math.max(20, Math.round((avail / w) * 100)));
+  };
+
+  const fitOnePage = () => {
+    const box = editorRef.current?.closest('.flex-1');
+    const avail = (box?.clientHeight ?? 700) - 60;
+    const h = setup.landscape ? PAGE_WIDTH : PAGE_HEIGHT;
+    setZoom(Math.max(20, Math.round((avail / h) * 100)));
+  };
 
   const applyFontFamily = (v: string) => {
     setFontFamily(v);
@@ -449,27 +512,69 @@ const Editor = () => {
         onMarkupView={review.applyMarkupView}
         hasComments={!!review.count('.pv-comment')}
         hasChanges={!!review.count('.pv-ins, .pv-del')}
+        viewMode={viewMode}
+        onViewMode={applyViewMode}
+        showRuler={showRuler}
+        onShowRuler={setShowRuler}
+        showGrid={showGrid}
+        onShowGrid={setShowGrid}
+        showNav={showNav}
+        onShowNav={setShowNav}
+        pageFlow={pageFlow}
+        onPageFlow={setPageFlow}
+        onZoomDialog={zoomDialog}
+        onFitWidth={fitWidth}
+        onOnePage={fitOnePage}
+        onManyPages={() => setZoom(50)}
+        onNewWindow={() => window.open(window.location.href, '_blank')}
+        onArrangeAll={() => setZoom(60)}
+        onSplit={() => setSplitView((v) => !v)}
+        splitView={splitView}
+        onMacros={() =>
+          toast({
+            title: 'Макросы',
+            description: 'Запись макросов в этой версии недоступна',
+          })
+        }
+        onProperties={() => setFileMenu(true)}
       />
 
-      <DocRuler
-        zoom={zoom}
-        pageWidth={setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH}
-        padding={setup.margin * CM}
-      />
+      {showRuler && viewMode === 'print' && (
+        <DocRuler
+          zoom={zoom}
+          pageWidth={setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH}
+          padding={setup.margin * CM}
+        />
+      )}
 
-      <DocumentCanvas
-        ref={editorRef}
-        zoom={zoom}
-        pages={stats.pages}
-        onInput={recount}
-        onScroll={onCanvasScroll}
-        theme={theme}
-        setup={setup}
-        paraSpacing={paraSpacing}
-        watermark={watermark}
-        pageColor={pageColor}
-        pageBorder={pageBorder}
-      />
+      <div className="flex min-h-0 flex-1">
+        {showNav && (
+          <NavigationPane
+            getHeadings={getHeadings}
+            onGo={goToHeading}
+            onClose={() => setShowNav(false)}
+            refreshKey={stats.words}
+          />
+        )}
+
+        <DocumentCanvas
+          ref={editorRef}
+          zoom={zoom}
+          pages={stats.pages}
+          onInput={recount}
+          onScroll={onCanvasScroll}
+          theme={theme}
+          setup={setup}
+          paraSpacing={paraSpacing}
+          watermark={watermark}
+          pageColor={pageColor}
+          pageBorder={pageBorder}
+          viewMode={viewMode}
+          showGrid={showGrid}
+          pageFlow={pageFlow}
+          splitView={splitView}
+        />
+      </div>
 
       <StatusBar
         words={stats.words}

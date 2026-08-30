@@ -10,20 +10,6 @@ export interface TabActions {
   zoom: number;
 }
 
-export const RibbonView = (p: TabActions) => (
-  <>
-    <RibbonGroup title="Режимы просмотра">
-      <BigBtn icon="FileText" label="Разметка страницы" onClick={() => p.onZoom(100)} />
-      <BigBtn icon="Monitor" label="Веб-документ" onClick={() => p.onZoom(120)} />
-    </RibbonGroup>
-    <RibbonGroup title="Масштаб">
-      <BigBtn icon="ZoomIn" label="Увеличить" onClick={() => p.onZoom(Math.min(200, p.zoom + 10))} />
-      <BigBtn icon="ZoomOut" label="Уменьшить" onClick={() => p.onZoom(Math.max(50, p.zoom - 10))} />
-      <BigBtn icon="Maximize" label="100%" onClick={() => p.onZoom(100)} />
-    </RibbonGroup>
-  </>
-);
-
 export const RibbonHelp = (p: TabActions) => (
   <>
     <RibbonGroup title="Справка">
