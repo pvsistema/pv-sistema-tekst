@@ -1,4 +1,4 @@
-import { RibbonGroup, SmallBtn, BigBtn, VStack } from './RibbonControls';
+import { RibbonGroup, BigBtn } from './RibbonControls';
 
 export interface TabActions {
   onCommand: (command: string, value?: string) => void;
@@ -9,23 +9,6 @@ export interface TabActions {
   onZoom: (v: number) => void;
   zoom: number;
 }
-
-export const RibbonReview = (p: TabActions) => (
-  <>
-    <RibbonGroup title="Правописание">
-      <BigBtn icon="SpellCheck" label="Орфография" onClick={() => p.onCommand('justifyLeft')} />
-      <BigBtn icon="BookOpen" label="Тезаурус" onClick={() => p.onCommand('justifyLeft')} />
-    </RibbonGroup>
-    <RibbonGroup title="Примечания">
-      <BigBtn icon="MessageSquarePlus" label="Создать примечание" onClick={() => p.onCommand('hiliteColor', '#fff2cc')} />
-    </RibbonGroup>
-    <RibbonGroup title="Язык">
-      <VStack>
-        <SmallBtn icon="Languages" title="Язык" label="Язык: русский" onClick={() => p.onCommand('justifyLeft')} />
-      </VStack>
-    </RibbonGroup>
-  </>
-);
 
 export const RibbonView = (p: TabActions) => (
   <>

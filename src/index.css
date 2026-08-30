@@ -276,6 +276,49 @@
     @apply underline decoration-dotted;
   }
 
+  /* вкладка «Рецензирование» */
+  .pv-page .pv-comment {
+    @apply bg-[hsl(48_100%_90%)] decoration-[hsl(35_90%_50%)];
+  }
+
+  .pv-page .pv-comment-mark {
+    @apply ml-[1px] align-super text-[9px] font-semibold text-[hsl(25_90%_45%)];
+  }
+
+  .pv-page.pv-hide-comments .pv-comment {
+    @apply bg-transparent;
+  }
+
+  .pv-page.pv-hide-comments .pv-comment-mark,
+  .pv-page.pv-hide-comments .pv-comment-list {
+    @apply hidden;
+  }
+
+  .pv-page .pv-ins {
+    @apply text-[#c00000] underline;
+  }
+
+  .pv-page .pv-del {
+    @apply text-[#c00000] line-through;
+  }
+
+  .pv-page.pv-markup-none .pv-ins {
+    @apply text-inherit no-underline;
+  }
+
+  .pv-page.pv-markup-none .pv-del {
+    @apply hidden;
+  }
+
+  .pv-page.pv-markup-original .pv-ins {
+    @apply hidden;
+  }
+
+  .pv-page.pv-markup-original .pv-del {
+    @apply text-inherit no-underline;
+    text-decoration: none;
+  }
+
   .pv-page hr {
     @apply my-5 border-t border-[hsl(var(--hero-rule))];
   }

@@ -4,8 +4,8 @@ import RibbonInsert from './RibbonInsert';
 import RibbonDesign, { DesignProps } from './RibbonDesign';
 import RibbonLayout, { LayoutProps } from './RibbonLayout';
 import RibbonLinks, { LinksProps } from './RibbonLinks';
+import RibbonReview, { ReviewProps } from './RibbonReview';
 import {
-  RibbonReview,
   RibbonView,
   RibbonHelp,
   TabActions,
@@ -29,7 +29,8 @@ interface Props
     TabActions,
     DesignProps,
     LayoutProps,
-    LinksProps {
+    LinksProps,
+    ReviewProps {
   tab: RibbonTab;
   onTab: (t: RibbonTab) => void;
   onFileMenu: () => void;
@@ -100,7 +101,7 @@ const Ribbon = (p: Props) => {
         {p.tab === 'Конструктор' && <RibbonDesign {...p} />}
         {p.tab === 'Макет' && <RibbonLayout {...p} />}
         {p.tab === 'Ссылки' && <RibbonLinks {...p} />}
-        {p.tab === 'Рецензирование' && <RibbonReview {...actions} />}
+        {p.tab === 'Рецензирование' && <RibbonReview {...p} />}
         {p.tab === 'Вид' && <RibbonView {...actions} />}
         {p.tab === 'Справка' && <RibbonHelp {...actions} />}
       </div>

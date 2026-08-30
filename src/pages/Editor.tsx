@@ -16,6 +16,7 @@ import StatusBar from '@/components/editor/StatusBar';
 import FileMenu from '@/components/editor/FileMenu';
 import type { DocTemplate } from '@/components/editor/fileTemplates';
 import { useReferences } from '@/hooks/use-references';
+import { useReview } from '@/hooks/use-review';
 import { FONT_VALUE } from '@/components/editor/RibbonHome';
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -117,6 +118,16 @@ const Editor = () => {
     exec,
     recount,
     notify: (title, description) => toast({ title, description }),
+  });
+
+  const review = useReview({
+    editorRef,
+    exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+    words: stats.words,
+    chars: stats.chars,
+    pages: stats.pages,
   });
 
   const applyFontFamily = (v: string) => {
@@ -413,6 +424,31 @@ const Editor = () => {
         hasToc={!!refs.count('.pv-toc')}
         hasIndex={!!refs.count('.pv-indexlist')}
         hasFigures={!!refs.count('.pv-figlist')}
+        onSpelling={review.spelling}
+        onThesaurus={review.thesaurus}
+        onStats={review.stats}
+        onReadAloud={review.readAloud}
+        onReadability={review.readability}
+        onTranslate={review.translate}
+        onLanguage={review.language}
+        onNewComment={review.newComment}
+        onDeleteComment={review.deleteComment}
+        onPrevComment={review.prevComment}
+        onNextComment={review.nextComment}
+        showComments={review.showComments}
+        onToggleComments={review.toggleComments}
+        trackChanges={review.trackChanges}
+        onToggleTrack={review.toggleTrack}
+        onShowMarkup={review.showMarkup}
+        onReviewPane={review.reviewPane}
+        onAcceptChange={review.acceptChange}
+        onRejectChange={review.rejectChange}
+        onCompare={review.compare}
+        onRestrict={review.restrict}
+        markupView={review.markupView}
+        onMarkupView={review.applyMarkupView}
+        hasComments={!!review.count('.pv-comment')}
+        hasChanges={!!review.count('.pv-ins, .pv-del')}
       />
 
       <DocRuler
