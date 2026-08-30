@@ -212,6 +212,70 @@
     @apply my-3 max-w-full rounded-sm;
   }
 
+  /* вкладка «Ссылки»: сноски, оглавление, указатели */
+  .pv-page sup.pv-fn,
+  .pv-page sup.pv-en {
+    @apply px-[1px] align-super text-[10px] font-semibold text-[#2f5496];
+  }
+
+  .pv-page .pv-notes {
+    @apply mt-6 border-t border-[hsl(0_0%_75%)] pt-2;
+  }
+
+  .pv-page .pv-notes-title {
+    @apply mb-1 text-[12px] font-semibold text-[hsl(0_0%_35%)];
+  }
+
+  .pv-page .pv-note-item {
+    @apply mb-[2px] text-[12px] leading-snug;
+  }
+
+  .pv-page .pv-toc,
+  .pv-page .pv-figlist {
+    @apply mb-5 border-b border-[hsl(0_0%_80%)] pb-3;
+  }
+
+  .pv-page .pv-toc-title {
+    @apply mb-2 text-[17px] text-[#2f5496];
+  }
+
+  .pv-page .pv-toc-row {
+    @apply mb-[3px] flex items-baseline justify-between gap-2 text-[13px];
+  }
+
+  .pv-page .pv-toc-row > span:first-child::after {
+    content: "";
+    @apply mx-1 inline-block w-full border-b border-dotted border-[hsl(0_0%_65%)] align-middle;
+  }
+
+  .pv-page .pv-toc-l2 {
+    @apply pl-5;
+  }
+
+  .pv-page .pv-toc-l3 {
+    @apply pl-10;
+  }
+
+  .pv-page .pv-cite {
+    @apply text-[hsl(0_0%_30%)];
+  }
+
+  .pv-page .pv-caption {
+    @apply my-2 text-center text-[12px] italic text-[hsl(0_0%_35%)];
+  }
+
+  .pv-page .pv-cross {
+    @apply text-[#2f5496] underline;
+  }
+
+  .pv-page .pv-index {
+    @apply bg-[hsl(48_100%_88%)];
+  }
+
+  .pv-page .pv-auth {
+    @apply underline decoration-dotted;
+  }
+
   .pv-page hr {
     @apply my-5 border-t border-[hsl(var(--hero-rule))];
   }

@@ -15,6 +15,7 @@ import FindReplaceDialog from '@/components/editor/FindReplaceDialog';
 import StatusBar from '@/components/editor/StatusBar';
 import FileMenu from '@/components/editor/FileMenu';
 import type { DocTemplate } from '@/components/editor/fileTemplates';
+import { useReferences } from '@/hooks/use-references';
 import { FONT_VALUE } from '@/components/editor/RibbonHome';
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -110,6 +111,13 @@ const Editor = () => {
     },
     [recount],
   );
+
+  const refs = useReferences({
+    editorRef,
+    exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+  });
 
   const applyFontFamily = (v: string) => {
     setFontFamily(v);
@@ -382,6 +390,29 @@ const Editor = () => {
         onPageBorder={setPageBorder}
         setup={setup}
         onSetup={patchSetup}
+        citeStyle={refs.citeStyle}
+        onCiteStyle={refs.setCiteStyle}
+        onToc={refs.buildToc}
+        onTocUpdate={refs.updateToc}
+        onTocAddText={refs.addTocText}
+        onFootnote={() => refs.addNote('foot')}
+        onEndnote={() => refs.addNote('end')}
+        onNextNote={refs.nextNote}
+        onShowNotes={refs.showNotes}
+        onCitation={refs.addCitation}
+        onSources={refs.manageSources}
+        onBibliography={refs.buildBibliography}
+        onCaption={refs.addCaption}
+        onFigureList={refs.buildFigureList}
+        onCrossRef={refs.addCrossRef}
+        onIndexMark={refs.markIndex}
+        onIndexBuild={refs.buildIndex}
+        onAuthorityMark={refs.markAuthority}
+        onAuthorityBuild={refs.buildAuthorities}
+        hasNotes={!!refs.count('sup.pv-fn, sup.pv-en')}
+        hasToc={!!refs.count('.pv-toc')}
+        hasIndex={!!refs.count('.pv-indexlist')}
+        hasFigures={!!refs.count('.pv-figlist')}
       />
 
       <DocRuler

@@ -3,8 +3,8 @@ import RibbonHome, { RibbonHomeProps } from './RibbonHome';
 import RibbonInsert from './RibbonInsert';
 import RibbonDesign, { DesignProps } from './RibbonDesign';
 import RibbonLayout, { LayoutProps } from './RibbonLayout';
+import RibbonLinks, { LinksProps } from './RibbonLinks';
 import {
-  RibbonLinks,
   RibbonMailings,
   RibbonReview,
   RibbonView,
@@ -26,7 +26,12 @@ export const TABS = [
 
 export type RibbonTab = (typeof TABS)[number];
 
-interface Props extends RibbonHomeProps, TabActions, DesignProps, LayoutProps {
+interface Props
+  extends RibbonHomeProps,
+    TabActions,
+    DesignProps,
+    LayoutProps,
+    LinksProps {
   tab: RibbonTab;
   onTab: (t: RibbonTab) => void;
   onFileMenu: () => void;
@@ -96,7 +101,7 @@ const Ribbon = (p: Props) => {
         {p.tab === 'Вставка' && <RibbonInsert {...actions} />}
         {p.tab === 'Конструктор' && <RibbonDesign {...p} />}
         {p.tab === 'Макет' && <RibbonLayout {...p} />}
-        {p.tab === 'Ссылки' && <RibbonLinks {...actions} />}
+        {p.tab === 'Ссылки' && <RibbonLinks {...p} />}
         {p.tab === 'Рассылки' && <RibbonMailings {...actions} />}
         {p.tab === 'Рецензирование' && <RibbonReview {...actions} />}
         {p.tab === 'Вид' && <RibbonView {...actions} />}
