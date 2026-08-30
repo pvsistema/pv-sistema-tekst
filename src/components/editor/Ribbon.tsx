@@ -5,7 +5,6 @@ import RibbonDesign, { DesignProps } from './RibbonDesign';
 import RibbonLayout, { LayoutProps } from './RibbonLayout';
 import RibbonLinks, { LinksProps } from './RibbonLinks';
 import {
-  RibbonMailings,
   RibbonReview,
   RibbonView,
   RibbonHelp,
@@ -18,7 +17,6 @@ export const TABS = [
   'Конструктор',
   'Макет',
   'Ссылки',
-  'Рассылки',
   'Рецензирование',
   'Вид',
   'Справка',
@@ -102,7 +100,6 @@ const Ribbon = (p: Props) => {
         {p.tab === 'Конструктор' && <RibbonDesign {...p} />}
         {p.tab === 'Макет' && <RibbonLayout {...p} />}
         {p.tab === 'Ссылки' && <RibbonLinks {...p} />}
-        {p.tab === 'Рассылки' && <RibbonMailings {...actions} />}
         {p.tab === 'Рецензирование' && <RibbonReview {...actions} />}
         {p.tab === 'Вид' && <RibbonView {...actions} />}
         {p.tab === 'Справка' && <RibbonHelp {...actions} />}

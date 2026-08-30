@@ -10,35 +10,6 @@ export interface TabActions {
   zoom: number;
 }
 
-export const RibbonLinks = (p: TabActions) => (
-  <>
-    <RibbonGroup title="Оглавление">
-      <BigBtn icon="ListTree" label="Оглавление" onClick={() => p.onCommand('insertOrderedList')} />
-    </RibbonGroup>
-    <RibbonGroup title="Сноски">
-      <VStack>
-        <SmallBtn icon="Superscript" title="Вставить сноску" label="Вставить сноску" onClick={() => p.onCommand('superscript')} />
-        <SmallBtn icon="BookMarked" title="Концевая сноска" label="Концевая сноска" onClick={() => p.onCommand('subscript')} />
-      </VStack>
-    </RibbonGroup>
-    <RibbonGroup title="Названия">
-      <BigBtn icon="Tag" label="Вставить название" onClick={() => p.onCommand('italic')} />
-    </RibbonGroup>
-  </>
-);
-
-export const RibbonMailings = (p: TabActions) => (
-  <>
-    <RibbonGroup title="Создание">
-      <BigBtn icon="Mail" label="Конверты" onClick={p.onPrint} />
-      <BigBtn icon="StickyNote" label="Наклейки" onClick={p.onPrint} />
-    </RibbonGroup>
-    <RibbonGroup title="Начало слияния">
-      <BigBtn icon="Users" label="Выбрать получателей" onClick={() => p.onCommand('justifyLeft')} />
-    </RibbonGroup>
-  </>
-);
-
 export const RibbonReview = (p: TabActions) => (
   <>
     <RibbonGroup title="Правописание">
