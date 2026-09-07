@@ -6,18 +6,22 @@ internal static class Program
 {
     /// <summary>Точка входа: одно окно на приложение.</summary>
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
+        /* путь к файлу, с которого запустили программу двойным кликом */
+        var startupFile = args.FirstOrDefault(a => !a.StartsWith('-') && File.Exists(a));
+
         using var mutex = new Mutex(true, "PVSTEKST_SingleInstance", out bool isFirst);
         if (!isFirst)
         {
-            MessageBox.Show(
-                "ПВ-Система Текст уже запущена.",
-                "ПВ-Система Текст",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            /* программа уже открыта — передаём файл в её окно */
+            SingleInstance.SendToRunningApp(startupFile);
             return;
         }
+
+        /* нужна для чтения старых файлов в кодировке Windows-1251 */
+        System.Text.Encoding.RegisterProvider(
+            System.Text.CodePagesEncodingProvider.Instance);
 
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
@@ -27,7 +31,9 @@ internal static class Program
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
             ShowFatal(e.ExceptionObject as Exception);
 
-        Application.Run(new MainForm());
+        var form = new MainForm(startupFile);
+        SingleInstance.StartListener(path => form.OpenFileFromShell(path));
+        Application.Run(form);
     }
 
     private static void ShowFatal(Exception? ex)

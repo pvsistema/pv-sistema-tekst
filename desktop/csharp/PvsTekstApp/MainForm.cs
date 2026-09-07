@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
@@ -9,8 +10,13 @@ public sealed class MainForm : Form
     private readonly WebView2 _web = new() { Dock = DockStyle.Fill };
     private const string VirtualHost = "app.pvstekst";
 
-    public MainForm()
+    private string? _startupFile;
+    private bool _ready;
+
+    public MainForm(string? startupFile = null)
     {
+        _startupFile = startupFile;
+
         Text = "ПВ-Система Текст";
         StartPosition = FormStartPosition.CenterScreen;
         WindowState = FormWindowState.Maximized;
@@ -94,8 +100,92 @@ public sealed class MainForm : Form
             Text = string.IsNullOrWhiteSpace(t) ? "ПВ-Система Текст" : t;
         };
 
+        /* файл, с которого запустили программу, кладём в страницу до её загрузки */
+        if (_startupFile is not null && TryReadDocument(_startupFile, out var name, out var text))
+        {
+            var script =
+                "window.pvsStartupFile = { name: " + ToJs(name) +
+                ", content: " + ToJs(text) + " };";
+            await core.AddScriptToExecuteOnDocumentCreatedAsync(script);
+            _startupFile = null;
+        }
+
+        core.NavigationCompleted += (_, _) => _ready = true;
         core.Navigate($"https://{VirtualHost}/index.html");
     }
+
+    /// <summary>Открывает документ, переданный из Проводника при работающей программе.</summary>
+    public void OpenFileFromShell(string path)
+    {
+        if (IsDisposed) return;
+
+        BeginInvoke(() =>
+        {
+            if (WindowState == FormWindowState.Minimized)
+                WindowState = FormWindowState.Maximized;
+            Activate();
+            BringToFront();
+
+            if (!_ready || _web.CoreWebView2 is null)
+            {
+                _startupFile = path;
+                return;
+            }
+
+            if (!TryReadDocument(path, out var name, out var text)) return;
+
+            _web.CoreWebView2.ExecuteScriptAsync(
+                "window.postMessage({ type: 'pvs-open-file', name: " + ToJs(name) +
+                ", content: " + ToJs(text) + " }, '*');");
+        });
+    }
+
+    /// <summary>Читает файл с учётом кодировки: .doc из редактора — это HTML в UTF-8.</summary>
+    private static bool TryReadDocument(string path, out string name, out string text)
+    {
+        name = Path.GetFileName(path);
+        text = string.Empty;
+
+        try
+        {
+            var bytes = File.ReadAllBytes(path);
+            if (bytes.Length > 20_000_000)
+            {
+                MessageBox.Show(
+                    "Файл слишком большой для открытия.",
+                    "ПВ-Система Текст",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return false;
+            }
+
+            text = new UTF8Encoding(false, false).GetString(bytes);
+
+            /* нет кириллицы, но есть её признаки в CP1251 — читаем как Windows-1251 */
+            if (text.Contains('\uFFFD'))
+            {
+                text = System.Text.Encoding
+                    .GetEncoding(1251, EncoderFallback.ReplacementFallback,
+                        DecoderFallback.ReplacementFallback)
+                    .GetString(bytes);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                "Не удалось открыть файл:\n" + ex.Message,
+                "ПВ-Система Текст",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return false;
+        }
+    }
+
+    /// <summary>Безопасно превращает текст в строку JavaScript.</summary>
+    private static string ToJs(string value) =>
+        System.Text.Json.JsonSerializer.Serialize(value);
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {

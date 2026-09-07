@@ -21,6 +21,7 @@ import type { ViewMode } from '@/components/editor/RibbonView';
 import NavigationPane from '@/components/editor/NavigationPane';
 import OptionsDialog from '@/components/editor/OptionsDialog';
 import { useAppOptions } from '@/hooks/use-app-options';
+import { useFileOpen, titleFromFileName } from '@/hooks/use-file-open';
 import { FONT_VALUE } from '@/components/editor/RibbonHome';
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -38,7 +39,6 @@ const Editor = () => {
   } = useDocuments();
 
   const editorRef = useRef<HTMLDivElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
 
   const [zoom, setZoom] = useState(100);
@@ -64,6 +64,17 @@ const Editor = () => {
   const [watermark, setWatermark] = useState('');
   const [pageColor, setPageColor] = useState('#ffffff');
   const [pageBorder, setPageBorder] = useState(false);
+
+  /* открытие файлов: двойной клик в Проводнике и кнопка «Открыть» */
+  const { pickFile } = useFileOpen(
+    useCallback(
+      (file) => {
+        importDocument(titleFromFileName(file.name), file.html);
+        toast({ title: 'Документ открыт', description: file.name });
+      },
+      [importDocument],
+    ),
+  );
 
   /* параметры приложения */
   const { options, setOptions, reset: resetOptions } = useAppOptions();
@@ -267,27 +278,9 @@ const Editor = () => {
       return next;
     });
 
-  const handleOpen = () => fileRef.current?.click();
-
-  const onFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const raw = String(reader.result ?? '');
-      const isHtml = /\.(html?|doc)$/i.test(file.name);
-      const html = isHtml
-        ? raw.replace(/^[\s\S]*?<body[^>]*>|<\/body>[\s\S]*$/gi, '')
-        : raw
-            .split(/\n{2,}/)
-            .map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`)
-            .join('');
-      importDocument(file.name.replace(/\.[^.]+$/, ''), html);
-      setFileMenu(false);
-      toast({ title: 'Документ открыт', description: file.name });
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+  const handleOpen = () => {
+    setFileMenu(false);
+    pickFile();
   };
 
   const handleSave = () => {
@@ -654,13 +647,6 @@ const Editor = () => {
         onReplace={replaceInDoc}
       />
 
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".txt,.html,.htm,.doc,.md"
-        onChange={onFilePicked}
-        className="hidden"
-      />
       <input
         ref={imageRef}
         type="file"

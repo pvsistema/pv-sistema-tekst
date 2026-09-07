@@ -282,6 +282,22 @@ powershell -NoProfile -Command ^
   "  $s.IconLocation='%INSTALL_DIR%\pvstekst.ico';" ^
   "  $s.Save() }" >nul 2>nul
 
+REM Register file types so a double-click on a document opens the editor.
+REM Only HKCU here: no admin rights needed and it does not touch other users.
+echo     Registering document types...
+powershell -NoProfile -Command ^
+  "$exe='%INSTALL_DIR%\PVSTEKST.exe';" ^
+  "$c='HKCU:\Software\Classes';" ^
+  "New-Item -Force -Path \"$c\PVSTEKST.Document\shell\open\command\" ^| Out-Null;" ^
+  "Set-ItemProperty -Path \"$c\PVSTEKST.Document\shell\open\command\" -Name '(default)' -Value ('\"'+$exe+'\" \"%%1\"');" ^
+  "New-Item -Force -Path \"$c\PVSTEKST.Document\DefaultIcon\" ^| Out-Null;" ^
+  "Set-ItemProperty -Path \"$c\PVSTEKST.Document\DefaultIcon\" -Name '(default)' -Value ($exe+',0');" ^
+  "New-Item -Force -Path \"$c\Applications\PVSTEKST.exe\shell\open\command\" ^| Out-Null;" ^
+  "Set-ItemProperty -Path \"$c\Applications\PVSTEKST.exe\shell\open\command\" -Name '(default)' -Value ('\"'+$exe+'\" \"%%1\"');" ^
+  "foreach($e in '.doc','.docx','.txt','.rtf','.html'){" ^
+  "  New-Item -Force -Path \"$c\$e\OpenWithProgids\" ^| Out-Null;" ^
+  "  New-ItemProperty -Force -Path \"$c\$e\OpenWithProgids\" -Name 'PVSTEKST.Document' -PropertyType String -Value '' ^| Out-Null }" >nul 2>nul
+
 echo     OK - installed
 echo.
 
