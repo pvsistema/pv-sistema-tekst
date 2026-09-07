@@ -35,3 +35,16 @@ venv/
 __pycache__/
 *.pyc
 *.egg-info/
+
+# Десктопная сборка (PVSTEKST.exe)
+dist-desktop
+desktop/csharp/dist
+desktop/csharp/installer-out
+desktop/csharp/.tools
+desktop/csharp/bin
+desktop/csharp/obj
+desktop/csharp/**/bin
+desktop/csharp/**/obj
+desktop/csharp/PvsTekstApp/pvstekst.ico
+desktop/csharp/PvsTekstApp/obfuscar.gen.xml
+desktop/installer/MicrosoftEdgeWebview2Setup.exe
