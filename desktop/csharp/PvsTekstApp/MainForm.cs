@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
@@ -101,11 +100,12 @@ public sealed class MainForm : Form
         };
 
         /* файл, с которого запустили программу, кладём в страницу до её загрузки */
-        if (_startupFile is not null && TryReadDocument(_startupFile, out var name, out var text))
+        if (_startupFile is not null
+            && TryReadDocument(_startupFile, out var name, out var data))
         {
             var script =
                 "window.pvsStartupFile = { name: " + ToJs(name) +
-                ", content: " + ToJs(text) + " };";
+                ", data: " + ToJs(data) + " };";
             await core.AddScriptToExecuteOnDocumentCreatedAsync(script);
             _startupFile = null;
         }
@@ -132,24 +132,27 @@ public sealed class MainForm : Form
                 return;
             }
 
-            if (!TryReadDocument(path, out var name, out var text)) return;
+            if (!TryReadDocument(path, out var name, out var data)) return;
 
             _web.CoreWebView2.ExecuteScriptAsync(
                 "window.postMessage({ type: 'pvs-open-file', name: " + ToJs(name) +
-                ", content: " + ToJs(text) + " }, '*');");
+                ", data: " + ToJs(data) + " }, '*');");
         });
     }
 
-    /// <summary>Читает файл с учётом кодировки: .doc из редактора — это HTML в UTF-8.</summary>
-    private static bool TryReadDocument(string path, out string name, out string text)
+    /// <summary>
+    /// Читает файл как есть и кодирует в base64. Документ .docx — это архив,
+    /// поэтому превращать его в текст нельзя: разбором занимается редактор.
+    /// </summary>
+    private static bool TryReadDocument(string path, out string name, out string data)
     {
         name = Path.GetFileName(path);
-        text = string.Empty;
+        data = string.Empty;
 
         try
         {
-            var bytes = File.ReadAllBytes(path);
-            if (bytes.Length > 20_000_000)
+            var info = new FileInfo(path);
+            if (info.Length > 40_000_000)
             {
                 MessageBox.Show(
                     "Файл слишком большой для открытия.",
@@ -159,17 +162,7 @@ public sealed class MainForm : Form
                 return false;
             }
 
-            text = new UTF8Encoding(false, false).GetString(bytes);
-
-            /* нет кириллицы, но есть её признаки в CP1251 — читаем как Windows-1251 */
-            if (text.Contains('\uFFFD'))
-            {
-                text = System.Text.Encoding
-                    .GetEncoding(1251, EncoderFallback.ReplacementFallback,
-                        DecoderFallback.ReplacementFallback)
-                    .GetString(bytes);
-            }
-
+            data = Convert.ToBase64String(File.ReadAllBytes(path));
             return true;
         }
         catch (Exception ex)

@@ -53,8 +53,15 @@ const paraToHtml = (para: string): string => {
   const props = para.match(/<w:pPr>([\s\S]*?)<\/w:pPr>/)?.[1] ?? '';
   const style = props.match(/<w:pStyle[^>]*w:val="([^"]*)"/)?.[1] ?? '';
 
-  const isList = /<w:numPr>/.test(props);
-  if (isList) return `<li>${inner || '&nbsp;'}</li>`;
+  /* список задаётся либо нумерацией, либо стилем «Список» */
+  const isList =
+    /<w:numPr>/.test(props) ||
+    /^(?:List(?:Paragraph|Bullet|Number)|Abzacspiska|Spisok)/i.test(style);
+
+  if (isList) {
+    const ordered = /Number/i.test(style);
+    return `<li data-ordered="${ordered}">${inner || '&nbsp;'}</li>`;
+  }
 
   const heading = style.match(/^(?:Heading|Za?golovok|.*?)(\d)$/i)?.[1];
   if (/heading|zagolovok|заголовок/i.test(style) && heading) {
@@ -86,22 +93,38 @@ const tableToHtml = (table: string): string => {
     .map((r) => {
       const cells = [...r[1].matchAll(/<w:tc(?:\s[^>]*)?>([\s\S]*?)<\/w:tc>/g)]
         .map((c) => {
-          const text = [...c[1].matchAll(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g)]
-            .map((p) => paraToHtml(p[1]))
-            .join('');
-          return `<td>${text || '&nbsp;'}</td>`;
+          const paras = [...c[1].matchAll(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g)]
+            .map((p) => paraToHtml(p[1]));
+
+          /* один абзац в ячейке показываем без обёртки — как в Word */
+          const text =
+            paras.length === 1
+              ? paras[0].replace(/^<p[^>]*>|<\/p>$/g, '')
+              : paras.join('');
+
+          return `<td>${text.trim() || '&nbsp;'}</td>`;
         })
         .join('');
       return `<tr>${cells}</tr>`;
     })
     .join('');
 
+  /* первая строка помечена как заголовочная — показываем её шапкой */
+  if (/<w:tblHeader\b/.test(rows[0][1]) || /<w:b\/>/.test(rows[0][1])) {
+    const head = body.match(/<tr>[\s\S]*?<\/tr>/)?.[0] ?? '';
+    const rest = body.slice(head.length);
+    return `<table><thead>${head.replace(/<td>/g, '<th>').replace(/<\/td>/g, '</th>')}</thead><tbody>${rest}</tbody></table>`;
+  }
+
   return `<table>${body}</table>`;
 };
 
-/** Собирает подряд идущие элементы списка в один список */
+/** Собирает подряд идущие элементы списка в маркированный или нумерованный */
 const wrapLists = (html: string) =>
-  html.replace(/(?:<li>[\s\S]*?<\/li>)+/g, (m) => `<ul>${m}</ul>`);
+  html.replace(/(?:<li data-ordered="(?:true|false)">[\s\S]*?<\/li>)+/g, (m) => {
+    const tag = m.includes('data-ordered="true"') ? 'ol' : 'ul';
+    return `<${tag}>${m.replace(/ data-ordered="(?:true|false)"/g, '')}</${tag}>`;
+  });
 
 /**
  * Превращает содержимое .docx в разметку документа.
