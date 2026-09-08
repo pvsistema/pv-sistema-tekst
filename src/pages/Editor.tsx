@@ -34,6 +34,12 @@ import {
 } from '@/lib/print';
 import AutoCorrectDialog from '@/components/editor/AutoCorrectDialog';
 import { useShapes } from '@/hooks/use-shapes';
+import { useInserts } from '@/hooks/use-inserts';
+import SymbolDialog from '@/components/editor/SymbolDialog';
+import {
+  DateTimeDialog,
+  QuickPartsDialog,
+} from '@/components/editor/QuickPartsDialog';
 import ShapesGallery, {
   WordArtGallery,
 } from '@/components/editor/ShapesGallery';
@@ -277,6 +283,19 @@ const Editor = () => {
     recount,
     notify: (title, description) => toast({ title, description }),
   });
+
+  const inserts = useInserts({
+    editorRef,
+    exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+  });
+
+  /* поля даты показывают сегодняшнее число при открытии документа */
+  useEffect(() => {
+    inserts.refreshFields();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
 
   const shapes = useShapes({
     editorRef,
@@ -809,6 +828,9 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onWordArt={() => shapes.setWordArtDialog(true)}
         onWrap={shapes.setWrap}
         onOrder={shapes.setOrder}
+        onSymbol={() => inserts.setSymbolOpen(true)}
+        onDateTime={() => inserts.setDateOpen(true)}
+        onQuickParts={() => inserts.setPartsOpen(true)}
         onRemoveBreak={breaks.removeOne}
         onRemoveAllBreaks={breaks.removeAll}
         styles={docStyles.styles}
@@ -1046,6 +1068,27 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
           setFileMenu(false);
           setOptionsOpen(true);
         }}
+      />
+
+      <SymbolDialog
+        open={inserts.symbolOpen}
+        onClose={() => inserts.setSymbolOpen(false)}
+        onPick={inserts.insertSymbol}
+      />
+
+      <DateTimeDialog
+        open={inserts.dateOpen}
+        onClose={() => inserts.setDateOpen(false)}
+        onPick={inserts.insertDate}
+      />
+
+      <QuickPartsDialog
+        open={inserts.partsOpen}
+        parts={inserts.parts}
+        onClose={() => inserts.setPartsOpen(false)}
+        onPick={inserts.insertPart}
+        onRemove={inserts.removePart}
+        onSaveSelection={inserts.savePart}
       />
 
       <ShapesGallery

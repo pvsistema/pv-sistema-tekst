@@ -57,6 +57,9 @@ const Ribbon = (p: Props) => {
     onWordArt: p.onWordArt,
     onWrap: p.onWrap,
     onOrder: p.onOrder,
+    onSymbol: p.onSymbol,
+    onDateTime: p.onDateTime,
+    onQuickParts: p.onQuickParts,
     zoom: p.zoom,
   };
 

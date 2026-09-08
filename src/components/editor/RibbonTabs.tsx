@@ -18,6 +18,10 @@ export interface TabActions {
   onWordArt?: () => void;
   onWrap?: (wrap: import('@/lib/shapes').WrapMode) => void;
   onOrder?: (dir: 'front' | 'back') => void;
+  /** Вставка символов, даты и готовых блоков */
+  onSymbol?: () => void;
+  onDateTime?: () => void;
+  onQuickParts?: () => void;
 }
 
 export const RibbonHelp = (p: TabActions) => (

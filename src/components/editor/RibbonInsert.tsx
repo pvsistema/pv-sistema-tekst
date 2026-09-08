@@ -127,18 +127,11 @@ const RibbonInsert = (p: TabActions) => {
   const insertComment = () =>
     html('<span style="background:#fff2cc;border-bottom:1px dashed #bf9000">примечание</span>');
 
-  const insertDate = () =>
-    p.onCommand('insertText', new Date().toLocaleDateString('ru-RU'));
+  const insertDate = () => p.onDateTime?.();
 
-  const insertSignature = () =>
-    html(
-      '<p style="margin-top:32px">_______________________ / _______________________</p><p style="font-size:11px;color:#595959">подпись&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;расшифровка</p>',
-    );
+  const insertSignature = () => p.onQuickParts?.();
 
-  const insertSymbol = () => {
-    const s = window.prompt('Символ для вставки', '§');
-    if (s) p.onCommand('insertText', s);
-  };
+  const insertSymbol = () => p.onSymbol?.();
 
   const insertEquation = () => p.onCommand('insertText', 'x = (−b ± √(b² − 4ac)) / 2a');
 
@@ -231,13 +224,24 @@ const RibbonInsert = (p: TabActions) => {
 
       <RibbonGroup title="Текст">
         <BigCmd icon="TextCursorInput" lines={['Текстовое', 'поле']} caret width={60} onClick={insertTextBox} />
-        <BigCmd icon="Newspaper" lines={['Экспресс-', 'блоки']} caret width={60} onClick={insertTextBox} />
+        <BigCmd
+          icon="Newspaper"
+          lines={['Экспресс-', 'блоки']}
+          caret
+          width={60}
+          onClick={() => p.onQuickParts?.()}
+        />
         <BigCmd glyph="𝓐" lines={['WordArt']} caret width={54} onClick={insertWordArt} />
         <BigCmd icon="ALargeSmall" lines={['Буквица']} caret width={54} onClick={insertDropCap} />
         <Stack>
           <SmallCmd icon="PenLine" label="Строки подписи" caret onClick={insertSignature} />
           <SmallCmd icon="CalendarDays" label="Дата и время" onClick={insertDate} />
-          <SmallCmd icon="Package" label="Объект" caret onClick={insertTextBox} />
+          <SmallCmd
+            icon="Package"
+            label="Объект"
+            caret
+            onClick={() => p.onQuickParts?.()}
+          />
         </Stack>
       </RibbonGroup>
 
