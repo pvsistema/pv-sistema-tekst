@@ -20,6 +20,8 @@ import FontDialog from '@/components/editor/FontDialog';
 import ParagraphDialog from '@/components/editor/ParagraphDialog';
 import { useFormat } from '@/hooks/use-format';
 import { useTables } from '@/hooks/use-tables';
+import { useTabs } from '@/hooks/use-tabs';
+import TabsDialog from '@/components/editor/TabsDialog';
 import TableDialog from '@/components/editor/TableDialog';
 import StyleDialog from '@/components/editor/StyleDialog';
 import StylesPane from '@/components/editor/StylesPane';
@@ -71,6 +73,8 @@ const Editor = () => {
   const [fontFamily, setFontFamily] = useState('Calibri (Основной)');
   const [fontSize, setFontSize] = useState('11');
   const [stats, setStats] = useState({ words: 0, chars: 0, pages: 1 });
+  /* ссылка на пересчёт табуляции — хук создаётся ниже */
+  const tabsRef = useRef<(() => void) | null>(null);
   /* колонтитулы и номера страниц */
   const [furniture, setFurniture] = useState<PageFurniture>(DEFAULT_FURNITURE);
   const [furnitureOpen, setFurnitureOpen] = useState(false);
@@ -171,6 +175,8 @@ const Editor = () => {
   const handleInput = useCallback(() => {
     recount();
     checkDirty();
+    /* текст у позиций табуляции подравнивается на ходу */
+    tabsRef.current?.();
   }, [recount, checkDirty]);
 
   useEffect(() => {
@@ -250,6 +256,15 @@ const Editor = () => {
     recount,
     notify: (title, description) => toast({ title, description }),
   });
+
+  const tabs = useTabs({
+    editorRef,
+    exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+  });
+
+  tabsRef.current = tabs.realign;
 
   const tables = useTables({
     editorRef,
@@ -612,14 +627,14 @@ h1,h2,h3{page-break-after:avoid}
         return;
       }
 
-      /* вне списка Tab делает отступ табуляции */
+      /* вне списка Tab переводит текст к следующей позиции табуляции */
       e.preventDefault();
-      exec('insertHTML', '<span class="pv-tab">\u2003\u2003</span>');
+      tabs.handleTabKey();
     };
 
     el.addEventListener('keydown', onTab);
     return () => el.removeEventListener('keydown', onTab);
-  }, [exec, tables]);
+  }, [exec, tables, tabs]);
 
   /* ── горячие клавиши ── */
   useEffect(() => {
@@ -812,6 +827,11 @@ h1,h2,h3{page-break-after:avoid}
           zoom={zoom}
           pageWidth={setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH}
           padding={setup.margin * CM}
+          tabStops={tabs.stops}
+          tabAlign={tabs.align}
+          onTabAlign={tabs.cycleAlign}
+          onAddTab={tabs.add}
+          onRemoveTab={tabs.remove}
         />
       )}
 
@@ -934,6 +954,13 @@ h1,h2,h3{page-break-after:avoid}
         onDelete={docStyles.remove}
       />
 
+      <TabsDialog
+        open={tabs.dialogOpen}
+        stops={tabs.stops}
+        onClose={() => tabs.setDialogOpen(false)}
+        onApply={tabs.applyAll}
+      />
+
       <TableDialog
         open={tables.dialogOpen}
         onClose={() => tables.setDialogOpen(false)}
@@ -952,6 +979,10 @@ h1,h2,h3{page-break-after:avoid}
         initial={fmt.paraInit}
         onClose={() => fmt.setParaOpen(false)}
         onApply={fmt.applyPara}
+        onTabs={() => {
+          fmt.setParaOpen(false);
+          tabs.setDialogOpen(true);
+        }}
       />
 
       <FindReplaceDialog

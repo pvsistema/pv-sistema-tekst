@@ -8,6 +8,8 @@ interface Props {
   initial: ParaFormat;
   onClose: () => void;
   onApply: (f: ParaFormat) => void;
+  /** Переход к окну «Табуляция» — как в Word */
+  onTabs?: () => void;
 }
 
 const ALIGNS: { value: ParaFormat['align']; label: string }[] = [
@@ -67,7 +69,7 @@ const Num = ({
 );
 
 /** Окно «Абзац»: выравнивание, отступы и интервалы с образцом */
-const ParagraphDialog = ({ open, initial, onClose, onApply }: Props) => {
+const ParagraphDialog = ({ open, initial, onClose, onApply, onTabs }: Props) => {
   const [f, setF] = useState<ParaFormat>(initial);
 
   useEffect(() => {
@@ -243,6 +245,16 @@ const ParagraphDialog = ({ open, initial, onClose, onApply }: Props) => {
         </div>
 
         <div className="flex justify-end gap-2 border-t border-slate-300 px-4 py-3">
+          {onTabs && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mr-auto"
+              onClick={onTabs}
+            >
+              Табуляция…
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => setF(DEFAULT_PARA)}>
             По умолчанию
           </Button>

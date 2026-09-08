@@ -134,6 +134,11 @@ const collectRuns = (node: Node, fmt: Fmt): string => {
   if (tag === 'BR') return '<w:r><w:br/></w:r>';
   if (tag === 'IMG') return '';
 
+  /* переход к позиции табуляции — символ табуляции Word */
+  if ((el as HTMLElement).classList?.contains('pv-tab')) {
+    return '<w:r><w:tab/></w:r>';
+  }
+
   let next = applyStyle(el, fmt);
   if (tag === 'B' || tag === 'STRONG') next = { ...next, b: true };
   if (tag === 'I' || tag === 'EM') next = { ...next, i: true };
@@ -147,11 +152,58 @@ const collectRuns = (node: Node, fmt: Fmt): string => {
 };
 
 /** Свойства абзаца: стиль, выравнивание, уровень списка */
+/** Позиции табуляции абзаца в терминах Word (в двадцатых долях пункта) */
+const tabsOf = (el: Element): string => {
+  const raw = el.getAttribute?.('data-tabs');
+  if (!raw) return '';
+
+  try {
+    const stops = JSON.parse(raw) as {
+      position: number;
+      align: string;
+      leader: string;
+    }[];
+
+    if (!Array.isArray(stops) || !stops.length) return '';
+
+    const WORD_ALIGN: Record<string, string> = {
+      left: 'left',
+      center: 'center',
+      right: 'right',
+      decimal: 'decimal',
+      bar: 'bar',
+    };
+
+    const WORD_LEADER: Record<string, string> = {
+      none: 'none',
+      dots: 'dot',
+      dashes: 'hyphen',
+      line: 'underscore',
+    };
+
+    const items = stops
+      .map((t) => {
+        /* сантиметры переводим в twip: 1 см = 567 twip */
+        const pos = Math.round(t.position * 567);
+        return (
+          `<w:tab w:val="${WORD_ALIGN[t.align] ?? 'left'}" ` +
+          `w:leader="${WORD_LEADER[t.leader] ?? 'none'}" w:pos="${pos}"/>`
+        );
+      })
+      .join('');
+
+    return `<w:tabs>${items}</w:tabs>`;
+  } catch {
+    return '';
+  }
+};
+
 const pPr = (opts: {
   style?: string;
   align?: string;
   numId?: number;
   level?: number;
+  tabs?: string;
 }): string => {
   const p: string[] = [];
   if (opts.style) p.push(`<w:pStyle w:val="${opts.style}"/>`);
@@ -159,6 +211,7 @@ const pPr = (opts: {
     p.push(
       `<w:numPr><w:ilvl w:val="${opts.level ?? 0}"/><w:numId w:val="${opts.numId}"/></w:numPr>`,
     );
+  if (opts.tabs) p.push(opts.tabs);
   if (opts.align) p.push(`<w:jc w:val="${opts.align}"/>`);
   return p.length ? `<w:pPr>${p.join('')}</w:pPr>` : '';
 };
@@ -250,7 +303,9 @@ const bodyFromHtml = (root: Element): string => {
       return;
     }
 
-    out.push(`<w:p>${pPr({ style, align: alignOf(el) })}${runs}</w:p>`);
+    out.push(
+      `<w:p>${pPr({ style, align: alignOf(el), tabs: tabsOf(el) })}${runs}</w:p>`,
+    );
   };
 
   /** Таблица со рамками и шапкой */

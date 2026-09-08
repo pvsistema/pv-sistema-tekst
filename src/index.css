@@ -328,6 +328,23 @@
     @apply text-[hsl(210_50%_60%)];
   }
 
+  /* заполнитель — точки или линия до позиции табуляции */
+  .pv-page .pv-tab-fill {
+    @apply block w-full overflow-hidden whitespace-nowrap text-[hsl(0_0%_55%)];
+  }
+
+  .pv-page .pv-tab-fill[data-leader="dots"]::before {
+    content: ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .";
+  }
+
+  .pv-page .pv-tab-fill[data-leader="dashes"]::before {
+    content: "------------------------------------------------";
+  }
+
+  .pv-page .pv-tab-fill[data-leader="line"]::before {
+    content: "________________________________________________";
+  }
+
   /* режим «Структура» вкладки «Вид» */
   .pv-page.pv-outline p,
   .pv-page.pv-outline li {
