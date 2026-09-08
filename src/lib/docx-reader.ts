@@ -14,6 +14,15 @@ export const isZip = (bytes: Uint8Array) =>
   bytes[1] === 0x4b &&
   (bytes[2] === 0x03 || bytes[2] === 0x05 || bytes[2] === 0x07);
 
+/** Полутвипы Word в пункты: 28 → 14 пт */
+const halfPointsToPt = (raw: string): number => Number(raw) / 2;
+
+/** Твипы Word в сантиметры: 709 → 1,25 см */
+const twipsToCm = (raw: string): number => Number(raw) / 567;
+
+/** Число без длинного хвоста после запятой */
+const trim = (v: number): string => String(Math.round(v * 100) / 100);
+
 /** Оформление одного участка текста: жирный, курсив и прочее */
 const runToHtml = (run: string): string => {
   const texts = [...run.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)]
@@ -21,9 +30,11 @@ const runToHtml = (run: string): string => {
     .join('');
 
   const breaks = /<w:br\b/.test(run) ? '<br>' : '';
-  if (!texts && !breaks) return '';
+  const tabs = [...run.matchAll(/<w:tab\/>/g)].map(() => '\u00a0\u00a0\u00a0\u00a0').join('');
 
-  let html = esc(texts) + breaks;
+  if (!texts && !breaks && !tabs) return '';
+
+  let html = esc(texts) + tabs + breaks;
   const props = run.match(/<w:rPr>([\s\S]*?)<\/w:rPr>/)?.[1] ?? '';
 
   if (/<w:b\b(?![^>]*w:val="(?:0|false)")/.test(props)) html = `<strong>${html}</strong>`;
@@ -33,13 +44,40 @@ const runToHtml = (run: string): string => {
   if (/w:val="superscript"/.test(props)) html = `<sup>${html}</sup>`;
   if (/w:val="subscript"/.test(props)) html = `<sub>${html}</sub>`;
 
+  /*
+   * Цвет держим даже если он чёрный: в заголовках редактор красит
+   * текст синим, и без явного цвета документ выглядел бы иначе.
+   */
   const color = props.match(/<w:color[^>]*w:val="([0-9A-Fa-f]{6})"/)?.[1];
-  if (color && color.toLowerCase() !== '000000')
-    html = `<span style="color:#${color}">${html}</span>`;
+  if (color) html = `<span style="color:#${color}">${html}</span>`;
 
   const hl = props.match(/<w:highlight[^>]*w:val="(\w+)"/)?.[1];
   if (hl && hl !== 'none')
     html = `<span style="background-color:${hl}">${html}</span>`;
+
+  /* шрифт и размер — без них документ выглядит не так, как в Word */
+  const css: string[] = [];
+
+  const font =
+    props.match(/<w:rFonts[^>]*w:ascii="([^"]+)"/)?.[1] ??
+    props.match(/<w:rFonts[^>]*w:hAnsi="([^"]+)"/)?.[1];
+
+  if (font) css.push(`font-family:'${font}'`);
+
+  /* Word может задать размер дважды — верное значение последнее */
+  const sizes = [...props.matchAll(/<w:sz[^>]*w:val="(\d+)"/g)];
+  const size = sizes[sizes.length - 1]?.[1];
+  if (size) css.push(`font-size:${trim(halfPointsToPt(size))}pt`);
+
+  /* разрядка: Word хранит её в двадцатых долях пункта */
+  const spacing = props.match(/<w:spacing[^>]*w:val="(-?\d+)"/)?.[1];
+  if (spacing && Number(spacing) !== 0)
+    css.push(`letter-spacing:${trim(Number(spacing) / 20)}pt`);
+
+  if (/<w:caps\b(?![^>]*w:val="(?:0|false)")/.test(props))
+    css.push('text-transform:uppercase');
+
+  if (css.length) html = `<span style="${css.join(';')}">${html}</span>`;
 
   return html;
 };
@@ -71,8 +109,55 @@ const parseNumbering = (xml: string): Map<string, boolean> => {
   return result;
 };
 
+/** Основное оформление документа: шрифт и размер по умолчанию */
+export interface DocDefaults {
+  font?: string;
+  size?: string;
+  /** Оформление именованных стилей: Обычный, Заголовок и прочие */
+  styles: Map<string, { font?: string; size?: string; css: string }>;
+}
+
+/** Читает styles.xml — оттуда берётся шрифт всего документа */
+const parseStyles = (xml: string): DocDefaults => {
+  const defaults: DocDefaults = { styles: new Map() };
+
+  const docDefaults = xml.match(
+    /<w:docDefaults>([\s\S]*?)<\/w:docDefaults>/,
+  )?.[1];
+
+  if (docDefaults) {
+    defaults.font =
+      docDefaults.match(/<w:rFonts[^>]*w:ascii="([^"]+)"/)?.[1] ?? undefined;
+
+    defaults.size =
+      docDefaults.match(/<w:sz[^>]*w:val="(\d+)"/)?.[1] ?? undefined;
+  }
+
+  /* оформление именованных стилей — на них ссылаются абзацы */
+  for (const m of xml.matchAll(
+    /<w:style\b[^>]*w:styleId="([^"]+)"[^>]*>([\s\S]*?)<\/w:style>/g,
+  )) {
+    const body = m[2];
+
+    const rPr = body.match(/<w:rPr>([\s\S]*?)<\/w:rPr>/)?.[1] ?? '';
+    const pPr = body.match(/<w:pPr>([\s\S]*?)<\/w:pPr>/)?.[1] ?? '';
+
+    defaults.styles.set(m[1], {
+      font: rPr.match(/<w:rFonts[^>]*w:ascii="([^"]+)"/)?.[1],
+      size: rPr.match(/<w:sz[^>]*w:val="(\d+)"/)?.[1],
+      css: paraCss(pPr),
+    });
+  }
+
+  return defaults;
+};
+
 /** Абзац: заголовок, элемент списка или обычный текст */
-const paraToHtml = (para: string, numbering?: Map<string, boolean>): string => {
+const paraToHtml = (
+  para: string,
+  numbering?: Map<string, boolean>,
+  defaults?: DocDefaults,
+): string => {
   const inner = [...para.matchAll(/<w:r(?:\s[^>]*)?>([\s\S]*?)<\/w:r>/g)]
     .map((m) => runToHtml(m[1]))
     .join('');
@@ -97,29 +182,88 @@ const paraToHtml = (para: string, numbering?: Map<string, boolean>): string => {
     return `<li data-ordered="${ordered}" data-level="${level}">${inner || '&nbsp;'}</li>`;
   }
 
+  /* к своему оформлению абзаца добавляем то, что задано его стилем */
+  const fromStyle = style ? defaults?.styles.get(style)?.css : '';
+  const own = paraCss(props);
+
+  const css = [fromStyle, own].filter(Boolean).join(';');
+  const styleAttr = css ? ` style="${css}"` : '';
+
+  /* заголовки сохраняют выравнивание и отступы, заданные в документе */
   const heading = style.match(/^(?:Heading|Za?golovok|.*?)(\d)$/i)?.[1];
   if (/heading|zagolovok|заголовок/i.test(style) && heading) {
     const level = Math.min(3, Number(heading));
-    return `<h${level}>${inner || '&nbsp;'}</h${level}>`;
+    return `<h${level}${styleAttr}>${inner || '&nbsp;'}</h${level}>`;
   }
-  if (/^Title$/i.test(style)) return `<h1>${inner || '&nbsp;'}</h1>`;
+  if (/^Title$/i.test(style))
+    return `<h1${styleAttr}>${inner || '&nbsp;'}</h1>`;
+
+  if (!inner) return `<p${styleAttr}><br></p>`;
+  return `<p${styleAttr}>${inner}</p>`;
+};
+
+/** Оформление абзаца: выравнивание, отступы и интервалы */
+const paraCss = (props: string): string => {
+  const css: string[] = [];
 
   const align = props.match(/<w:jc[^>]*w:val="(\w+)"/)?.[1];
-  const alignCss =
-    align === 'center'
-      ? ' style="text-align:center"'
-      : align === 'right'
-        ? ' style="text-align:right"'
-        : align === 'both'
-          ? ' style="text-align:justify"'
-          : '';
+  if (align === 'center') css.push('text-align:center');
+  else if (align === 'right') css.push('text-align:right');
+  else if (align === 'both') css.push('text-align:justify');
 
-  if (!inner) return '<p><br></p>';
-  return `<p${alignCss}>${inner}</p>`;
+  /* отступы абзаца */
+  const ind = props.match(/<w:ind\b[^>]*\/?>/)?.[0] ?? '';
+
+  const left = ind.match(/w:left="(-?\d+)"/)?.[1];
+  if (left && Number(left) !== 0)
+    css.push(`margin-left:${trim(twipsToCm(left))}cm`);
+
+  const right = ind.match(/w:right="(-?\d+)"/)?.[1];
+  if (right && Number(right) !== 0)
+    css.push(`margin-right:${trim(twipsToCm(right))}cm`);
+
+  /* красная строка либо выступ */
+  const firstLine = ind.match(/w:firstLine="(\d+)"/)?.[1];
+  const hanging = ind.match(/w:hanging="(\d+)"/)?.[1];
+
+  if (hanging && Number(hanging) !== 0)
+    css.push(`text-indent:-${trim(twipsToCm(hanging))}cm`);
+  else if (firstLine && Number(firstLine) !== 0)
+    css.push(`text-indent:${trim(twipsToCm(firstLine))}cm`);
+
+  /* интервалы до и после абзаца */
+  const sp = props.match(/<w:spacing\b[^>]*\/?>/)?.[0] ?? '';
+
+  const before = sp.match(/w:before="(\d+)"/)?.[1];
+  if (before !== undefined)
+    css.push(`margin-top:${trim(Number(before) / 20)}pt`);
+
+  const after = sp.match(/w:after="(\d+)"/)?.[1];
+  if (after !== undefined)
+    css.push(`margin-bottom:${trim(Number(after) / 20)}pt`);
+
+  /* междустрочный интервал */
+  const line = sp.match(/w:line="(\d+)"/)?.[1];
+  const rule = sp.match(/w:lineRule="(\w+)"/)?.[1];
+
+  if (line) {
+    if (rule === 'exact' || rule === 'atLeast') {
+      css.push(`line-height:${trim(Number(line) / 20)}pt`);
+    } else {
+      /* auto: 240 двадцатых долей — это одинарный интервал */
+      css.push(`line-height:${trim(Number(line) / 240)}`);
+    }
+  }
+
+  return css.join(';');
 };
 
 /** Таблица документа */
-const tableToHtml = (table: string, numbering?: Map<string, boolean>): string => {
+const tableToHtml = (
+  table: string,
+  numbering?: Map<string, boolean>,
+  defaults?: DocDefaults,
+): string => {
   const rows = [...table.matchAll(/<w:tr(?:\s[^>]*)?>([\s\S]*?)<\/w:tr>/g)];
   if (!rows.length) return '';
 
@@ -128,7 +272,7 @@ const tableToHtml = (table: string, numbering?: Map<string, boolean>): string =>
       const cells = [...r[1].matchAll(/<w:tc(?:\s[^>]*)?>([\s\S]*?)<\/w:tc>/g)]
         .map((c) => {
           const paras = [...c[1].matchAll(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g)]
-            .map((p) => paraToHtml(p[1], numbering));
+            .map((p) => paraToHtml(p[1], numbering, defaults));
 
           /* один абзац в ячейке показываем без обёртки — как в Word */
           const text =
@@ -193,7 +337,9 @@ export const docxToHtml = (bytes: Uint8Array): string | null => {
   try {
     files = unzipSync(bytes, {
       filter: (f) =>
-        f.name === 'word/document.xml' || f.name === 'word/numbering.xml',
+        f.name === 'word/document.xml' ||
+        f.name === 'word/numbering.xml' ||
+        f.name === 'word/styles.xml',
     });
   } catch {
     return null;
@@ -206,6 +352,10 @@ export const docxToHtml = (bytes: Uint8Array): string | null => {
     ? parseNumbering(strFromU8(files['word/numbering.xml']))
     : undefined;
 
+  const defaults = files['word/styles.xml']
+    ? parseStyles(strFromU8(files['word/styles.xml']))
+    : undefined;
+
   const xml = strFromU8(doc);
   const body = xml.match(/<w:body>([\s\S]*?)<\/w:body>/)?.[1] ?? xml;
 
@@ -216,15 +366,36 @@ export const docxToHtml = (bytes: Uint8Array): string | null => {
   for (const m of body.matchAll(re)) {
     const chunk = m[0];
     if (chunk.startsWith('<w:tbl')) {
-      parts.push(tableToHtml(chunk, numbering));
+      parts.push(tableToHtml(chunk, numbering, defaults));
     } else {
       const innerMatch = chunk.match(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/);
-      parts.push(innerMatch ? paraToHtml(innerMatch[1], numbering) : '<p><br></p>');
+      parts.push(
+        innerMatch ? paraToHtml(innerMatch[1], numbering, defaults) : '<p><br></p>',
+      );
     }
   }
 
   const html = wrapLists(parts.join(''));
-  return html.trim() || '<p><br></p>';
+  const body_html = html.trim() || '<p><br></p>';
+
+  /*
+   * Шрифт всего документа переносим в каждый абзац: общая обёртка
+   * мешала бы делить и объединять абзацы при правке.
+   */
+  const base: string[] = [];
+  if (defaults?.font) base.push(`font-family:'${defaults.font}'`);
+  if (defaults?.size)
+    base.push(`font-size:${trim(halfPointsToPt(defaults.size))}pt`);
+
+  if (!base.length) return body_html;
+
+  const prefix = `${base.join(';')};`;
+
+  return body_html.replace(
+    /<(p|h[1-6]|li)(\s+style="([^"]*)")?([^>]*)>/g,
+    (_all, tag, _attr, css, rest) =>
+      `<${tag} style="${prefix}${css ?? ''}"${rest}>`,
+  );
 };
 
 /** Текст документа RTF без служебных команд */
