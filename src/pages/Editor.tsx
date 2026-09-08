@@ -24,6 +24,14 @@ import { useTabs } from '@/hooks/use-tabs';
 import { useBreaks } from '@/hooks/use-breaks';
 import { useBorders } from '@/hooks/use-borders';
 import { useAutoCorrect } from '@/hooks/use-autocorrect';
+import type { PrintSetup } from '@/lib/print';
+import {
+  DEFAULT_PRINT,
+  PAPER_SIZES,
+  buildPrintHtml,
+  pagesToPrint,
+  printOrder,
+} from '@/lib/print';
 import AutoCorrectDialog from '@/components/editor/AutoCorrectDialog';
 import BordersDialog from '@/components/editor/BordersDialog';
 import TabsDialog from '@/components/editor/TabsDialog';
@@ -78,6 +86,8 @@ const Editor = () => {
   const [fontFamily, setFontFamily] = useState('Calibri (Основной)');
   const [fontSize, setFontSize] = useState('11');
   const [stats, setStats] = useState({ words: 0, chars: 0, pages: 1 });
+  /* параметры печати */
+  const [print, setPrint] = useState<PrintSetup>(DEFAULT_PRINT);
   /* ссылка на пересчёт табуляции — хук создаётся ниже */
   const tabsRef = useRef<(() => void) | null>(null);
   const breaksRef = useRef<(() => void) | null>(null);
@@ -491,19 +501,43 @@ const Editor = () => {
         ? `body::before{content:"";position:fixed;inset:${pb.margin}pt;border:${pb.width}pt ${pb.style} ${pb.color};pointer-events:none}`
         : '';
 
-    const page = `@page { size: A4; margin: ${setup.margin}cm; ${marks} }`;
+    const [pw, ph] = PAPER_SIZES[print.paper];
+    const size = setup.landscape ? `${ph}mm ${pw}mm` : `${pw}mm ${ph}mm`;
 
-    return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title><style>${page}
-${frame}
-body{font-family:Calibri,Arial,sans-serif;line-height:1.5;margin:0}
-table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6px}
-h1,h2,h3{page-break-after:avoid}
-.pv-page-break{page-break-before:always}
-</style></head><body>${body}</body></html>`;
+    const page = `@page { size: ${size}; margin: ${setup.margin}cm; ${marks} }`;
+
+    /* какие страницы уйдут на печать и в каком порядке */
+    const wanted = pagesToPrint(print, stats.pages, currentPage);
+    const order = printOrder(wanted, print);
+
+    return buildPrintHtml({
+      body,
+      title,
+      setup: print,
+      pageCss: page,
+      bodyCss: `${frame}\n.pv-page-break{page-break-before:always}`,
+      contentHeight: contentHeight,
+      contentWidth:
+        (setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH) - setup.margin * CM * 2,
+      pageWidth: setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH,
+      pageHeight: setup.landscape ? PAGE_WIDTH : PAGE_HEIGHT,
+      padding: setup.margin * CM,
+      pages: order,
+      landscape: setup.landscape,
+    });
   };
 
   const handleExportHtml = () => {
-    download(buildFullHtml(), `${active?.title ?? 'document'}.html`, 'text/html');
+    /* в файл сохраняем документ целиком, без выбора страниц и копий */
+    const body = editorRef.current?.innerHTML ?? '';
+    const title = active?.title ?? 'Документ';
+
+    const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title><style>
+body{font-family:Calibri,Arial,sans-serif;line-height:1.5;max-width:21cm;margin:2cm auto}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6px}
+</style></head><body>${body}</body></html>`;
+
+    download(html, `${active?.title ?? 'document'}.html`, 'text/html');
     toast({ title: 'Файл HTML сохранён' });
   };
 
@@ -552,7 +586,19 @@ h1,h2,h3{page-break-after:avoid}
     w.document.write(buildFullHtml());
     w.document.close();
     w.focus();
-    w.print();
+
+    /* даём странице отрисоваться, иначе печать уйдёт с пустым листом */
+    window.setTimeout(() => w.print(), 250);
+
+    const wanted = pagesToPrint(print, stats.pages, currentPage);
+
+    toast({
+      title: 'Документ отправлен на печать',
+      description:
+        print.copies > 1
+          ? `Страниц: ${wanted.length}, копий: ${print.copies}`
+          : `Страниц: ${wanted.length}`,
+    });
   };
 
   /* ── вставка ── */
@@ -956,6 +1002,9 @@ h1,h2,h3{page-break-after:avoid}
 
       <FileMenu
         open={fileMenu}
+        currentPage={currentPage}
+        print={print}
+        onPrintSetup={(patch) => setPrint((x) => ({ ...x, ...patch }))}
         onClose={() => setFileMenu(false)}
         documents={documents}
         activeId={activeId}

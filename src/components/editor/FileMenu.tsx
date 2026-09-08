@@ -29,6 +29,11 @@ interface Props {
   setup: PageSetup;
   onSetup: (patch: Partial<PageSetup>) => void;
   pages: number;
+  /** Страница, на которой стоит курсор */
+  currentPage?: number;
+  /** Параметры печати */
+  print: import('@/lib/print').PrintSetup;
+  onPrintSetup: (patch: Partial<import('@/lib/print').PrintSetup>) => void;
   getHtml: () => string;
   onOptions: () => void;
 }
@@ -423,6 +428,9 @@ const FileMenu = (p: Props) => {
                 setup={p.setup}
                 onSetup={p.onSetup}
                 pages={p.pages}
+                currentPage={p.currentPage}
+                print={p.print}
+                onPrintSetup={p.onPrintSetup}
                 onPrint={p.onPrint}
                 onOptions={() => setSection('info')}
               />

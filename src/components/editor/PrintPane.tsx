@@ -3,6 +3,13 @@ import Icon from '@/components/ui/icon';
 import type { DocTheme } from './RibbonDesign';
 import type { PageSetup } from './RibbonLayout';
 import { CM, PAGE_HEIGHT, PAGE_WIDTH } from './DocumentCanvas';
+import type { PagesPerSheet, PrintRange, PrintSetup } from '@/lib/print';
+import {
+  PAPER_LABELS,
+  pagesToPrint,
+  rangeLabel,
+  sheetGrid,
+} from '@/lib/print';
 
 interface Props {
   getHtml: () => string;
@@ -10,13 +17,17 @@ interface Props {
   setup: PageSetup;
   onSetup: (patch: Partial<PageSetup>) => void;
   pages: number;
+  /** Страница, на которой стоит курсор */
+  currentPage?: number;
+  print: PrintSetup;
+  onPrintSetup: (patch: Partial<PrintSetup>) => void;
   onPrint: () => void;
   onOptions: () => void;
 }
 
 const PRINTERS = [
+  { name: 'Сохранить как PDF', status: 'Готов' },
   { name: 'EPSON L355 Series', status: 'Не подключен' },
-  { name: 'Microsoft Print to PDF', status: 'Готов' },
   { name: 'Отправить в OneNote', status: 'Готов' },
 ];
 
@@ -58,21 +69,24 @@ const OptionRow = ({
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-10 border border-[hsl(var(--win-ribbon-border))] bg-white shadow-md">
-          {options.map((o, i) => (
-            <button
-              key={o}
-              type="button"
-              onClick={() => {
-                onPick(o, i);
-                setOpen(false);
-              }}
-              className="block w-full px-3 py-[6px] text-left text-[12px] hover:bg-[hsl(var(--win-hover))]"
-            >
-              {o}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 right-0 top-full z-20 border border-[hsl(var(--win-ribbon-border))] bg-white shadow-md">
+            {options.map((o, i) => (
+              <button
+                key={o}
+                type="button"
+                onClick={() => {
+                  onPick(o, i);
+                  setOpen(false);
+                }}
+                className="block w-full px-3 py-[6px] text-left text-[12px] hover:bg-[hsl(var(--win-hover))]"
+              >
+                {o}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -85,14 +99,18 @@ const MARGIN_PRESETS = [
   { label: 'Широкие поля', value: 5.08 },
 ];
 
+const RANGE_OPTIONS: { value: PrintRange; label: string }[] = [
+  { value: 'all', label: 'Напечатать все страницы' },
+  { value: 'current', label: 'Только текущая страница' },
+  { value: 'custom', label: 'Настраиваемый диапазон' },
+  { value: 'odd', label: 'Только нечётные страницы' },
+  { value: 'even', label: 'Только чётные страницы' },
+];
+
+const PER_SHEET: PagesPerSheet[] = [1, 2, 4, 6, 9];
+
 const PrintPane = (p: Props) => {
-  const [copies, setCopies] = useState(1);
   const [printer, setPrinter] = useState(PRINTERS[0]);
-  const [range, setRange] = useState('Все сразу');
-  const [pagesText, setPagesText] = useState('');
-  const [sides, setSides] = useState('Односторонняя печать');
-  const [collate, setCollate] = useState('Разобрать по копиям');
-  const [perSheet, setPerSheet] = useState('1 страница на листе');
   const [preview, setPreview] = useState(1);
   const [zoom, setZoom] = useState(81);
 
@@ -102,15 +120,30 @@ const PrintPane = (p: Props) => {
   const height = p.setup.landscape ? PAGE_WIDTH : PAGE_HEIGHT;
   const pad = p.setup.margin * CM;
   const scale = zoom / 100;
+  const s = p.print;
+
+  /* какие страницы реально уйдут на печать */
+  const willPrint = useMemo(
+    () => pagesToPrint(s, p.pages, p.currentPage ?? 1),
+    [s, p.pages, p.currentPage],
+  );
+
+  const [cols, rows] = sheetGrid(s.pagesPerSheet);
+  const sheets = Math.ceil(willPrint.length / (cols * rows));
+
+  /* в предпросмотре листаем только те страницы, что печатаются */
+  const shown = willPrint[Math.min(preview, willPrint.length) - 1] ?? 1;
 
   const marginLabel =
     MARGIN_PRESETS.find((m) => Math.abs(m.value - p.setup.margin) < 0.05)?.label ??
     'Настраиваемые поля';
 
+  const set = (patch: Partial<PrintSetup>) => p.onPrintSetup(patch);
+
   return (
     <div className="flex h-full min-h-0">
       {/* колонка настроек */}
-      <div className="w-[190px] shrink-0 pr-4">
+      <div className="w-[190px] shrink-0 overflow-y-auto pr-4">
         <div className="mb-4 flex items-start gap-4">
           <button
             type="button"
@@ -127,23 +160,28 @@ const PrintPane = (p: Props) => {
             </span>
             <div className="flex h-[22px] w-[54px] items-center border border-[hsl(var(--win-ribbon-border))] bg-white">
               <input
-                value={copies}
+                value={s.copies}
                 onChange={(e) =>
-                  setCopies(Math.max(1, Number(e.target.value.replace(/\D/g, '')) || 1))
+                  set({
+                    copies: Math.max(
+                      1,
+                      Number(e.target.value.replace(/\D/g, '')) || 1,
+                    ),
+                  })
                 }
                 className="h-full w-full px-1 text-[12px] outline-none"
               />
               <span className="flex h-full flex-col border-l border-[hsl(var(--win-ribbon-border))]">
                 <button
                   type="button"
-                  onClick={() => setCopies((c) => c + 1)}
+                  onClick={() => set({ copies: s.copies + 1 })}
                   className="flex h-1/2 w-[14px] items-center justify-center hover:bg-[hsl(var(--win-hover))]"
                 >
                   <Icon name="ChevronUp" size={9} />
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCopies((c) => Math.max(1, c - 1))}
+                  onClick={() => set({ copies: Math.max(1, s.copies - 1) })}
                   className="flex h-1/2 w-[14px] items-center justify-center hover:bg-[hsl(var(--win-hover))]"
                 >
                   <Icon name="ChevronDown" size={9} />
@@ -159,7 +197,7 @@ const PrintPane = (p: Props) => {
           </h3>
           <Icon name="Info" size={13} className="text-[hsl(0_0%_55%)]" />
         </div>
-        <div className="mb-1">
+        <div className="mb-3">
           <OptionRow
             icon="Printer"
             title={printer.name}
@@ -168,13 +206,6 @@ const PrintPane = (p: Props) => {
             onPick={(_, i) => setPrinter(PRINTERS[i])}
           />
         </div>
-        <button
-          type="button"
-          onClick={p.onPrint}
-          className="mb-3 block w-full text-right text-[11px] text-[hsl(var(--win-title))] hover:underline"
-        >
-          Свойства принтера
-        </button>
 
         <h3 className="mb-1 text-[15px] font-normal text-[hsl(var(--win-title))]">
           Параметры
@@ -184,41 +215,47 @@ const PrintPane = (p: Props) => {
           <OptionRow
             icon="FileStack"
             title={
-              range === 'Все сразу' ? 'Напечатать все страницы' : 'Диапазон страниц'
+              RANGE_OPTIONS.find((r) => r.value === s.range)?.label ?? 'Все'
             }
-            hint={range}
-            options={['Все сразу', 'Текущая страница', 'Настраиваемый диапазон']}
-            onPick={(v) => setRange(v)}
+            hint={rangeLabel(s, p.pages)}
+            options={RANGE_OPTIONS.map((r) => r.label)}
+            onPick={(_, i) => {
+              setPreview(1);
+              set({ range: RANGE_OPTIONS[i].value });
+            }}
           />
 
           <div className="flex items-center gap-1">
             <span className="text-[11px] text-[hsl(0_0%_25%)]">Страницы:</span>
             <input
-              value={pagesText}
-              onChange={(e) => setPagesText(e.target.value)}
+              value={s.pagesText}
+              placeholder="1-3, 5, 8-"
+              onChange={(e) => {
+                setPreview(1);
+                set({ pagesText: e.target.value, range: 'custom' });
+              }}
               className="h-[20px] flex-1 border border-[hsl(var(--win-ribbon-border))] px-1 text-[11px] outline-none focus:border-[hsl(var(--win-title))]"
             />
-            <Icon name="Info" size={12} className="text-[hsl(0_0%_55%)]" />
           </div>
 
           <OptionRow
             icon="Copy"
-            title={sides}
+            title={s.duplex ? 'Двусторонняя печать' : 'Односторонняя печать'}
             hint={
-              sides === 'Односторонняя печать'
-                ? 'Печатать только на одной…'
-                : 'Переворачивать страницы'
+              s.duplex
+                ? 'Переворачивать листы по длинному краю'
+                : 'Печатать только на одной стороне'
             }
             options={['Односторонняя печать', 'Двусторонняя печать']}
-            onPick={(v) => setSides(v)}
+            onPick={(_, i) => set({ duplex: i === 1 })}
           />
 
           <OptionRow
             icon="Layers"
-            title={collate}
-            hint={collate.startsWith('Разобрать') ? '1,2,3   1,2,3   1,2,3' : '1,1,1   2,2,2   3,3,3'}
+            title={s.collate ? 'Разобрать по копиям' : 'Не разбирать по копиям'}
+            hint={s.collate ? '1,2,3   1,2,3   1,2,3' : '1,1,1   2,2,2   3,3,3'}
             options={['Разобрать по копиям', 'Не разбирать по копиям']}
-            onPick={(v) => setCollate(v)}
+            onPick={(_, i) => set({ collate: i === 0 })}
           />
 
           <OptionRow
@@ -230,26 +267,66 @@ const PrintPane = (p: Props) => {
 
           <OptionRow
             icon="FileText"
-            title="A4 (210 x 297 мм)"
-            hint="21 см x 29,7 см"
-            options={['A4 (210 x 297 мм)', 'A5 (148 x 210 мм)', 'Letter (216 x 279 мм)']}
-            onPick={() => undefined}
+            title={
+              PAPER_LABELS.find((x) => x.value === s.paper)?.label ?? 'A4'
+            }
+            options={PAPER_LABELS.map((x) => x.label)}
+            onPick={(_, i) => set({ paper: PAPER_LABELS[i].value })}
           />
 
           <OptionRow
             icon="Columns2"
             title={marginLabel}
-            hint={`Верх: ${p.setup.margin} см снизу: ${p.setup.margin} см влев…`}
+            hint={`Поля со всех сторон: ${String(p.setup.margin).replace(
+              '.',
+              ',',
+            )} см`}
             options={MARGIN_PRESETS.map((m) => m.label)}
             onPick={(_, i) => p.onSetup({ margin: MARGIN_PRESETS[i].value })}
           />
 
           <OptionRow
             icon="LayoutGrid"
-            title={perSheet}
-            options={['1 страница на листе', '2 страницы на листе', '4 страницы на листе']}
-            onPick={(v) => setPerSheet(v)}
+            title={
+              s.pagesPerSheet === 1
+                ? '1 страница на листе'
+                : `${s.pagesPerSheet} страницы на листе`
+            }
+            hint={s.pagesPerSheet > 1 ? `Сетка ${cols}×${rows}` : undefined}
+            options={PER_SHEET.map((n) =>
+              n === 1 ? '1 страница на листе' : `${n} страницы на листе`,
+            )}
+            onPick={(_, i) => set({ pagesPerSheet: PER_SHEET[i] })}
           />
+
+          <OptionRow
+            icon="Scaling"
+            title={`Масштаб: ${s.scale} %`}
+            hint={s.scale === 100 ? 'Исходный размер' : 'Содержимое изменено'}
+            options={['50 %', '75 %', '100 %', '125 %', '150 %']}
+            onPick={(v) => set({ scale: Number(v.replace(/\D/g, '')) })}
+          />
+        </div>
+
+        <div className="mt-3 space-y-1 border-t border-[hsl(var(--win-ribbon-border))] pt-2">
+          <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-[hsl(0_0%_25%)]">
+            <input
+              type="checkbox"
+              checked={s.background}
+              onChange={(e) => set({ background: e.target.checked })}
+              className="h-3 w-3 accent-[hsl(var(--win-title))]"
+            />
+            Печатать фон и заливку
+          </label>
+          <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-[hsl(0_0%_25%)]">
+            <input
+              type="checkbox"
+              checked={s.drawings}
+              onChange={(e) => set({ drawings: e.target.checked })}
+              className="h-3 w-3 accent-[hsl(var(--win-title))]"
+            />
+            Печатать рисунки
+          </label>
         </div>
 
         <button
@@ -270,29 +347,67 @@ const PrintPane = (p: Props) => {
           >
             <div
               className="origin-top-left overflow-hidden bg-white shadow-[0_1px_4px_rgba(0,0,0,0.25)]"
-              style={{
-                width,
-                height,
-                transform: `scale(${scale})`,
-              }}
+              style={{ width, height, transform: `scale(${scale})` }}
             >
-              <div
-                className="pv-page"
-                style={
-                  {
-                    padding: pad,
-                    fontFamily: p.theme.bodyFont,
-                    color: p.theme.bodyColor,
-                    fontSize: 15,
-                    lineHeight: 1.5,
-                    marginTop: -(preview - 1) * (height - pad * 2),
-                    '--pv-h-font': p.theme.headingFont,
-                    '--pv-h-color': p.theme.headingColor,
-                    '--pv-h-transform': p.theme.headingUpper ? 'uppercase' : 'none',
-                  } as React.CSSProperties
-                }
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
+              {s.pagesPerSheet > 1 ? (
+                /* несколько страниц на листе — показываем сетку */
+                <div
+                  className="grid h-full w-full gap-[6mm] p-[6mm]"
+                  style={{
+                    gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                    gridTemplateRows: `repeat(${rows}, 1fr)`,
+                  }}
+                >
+                  {willPrint
+                    .slice(
+                      (preview - 1) * cols * rows,
+                      preview * cols * rows,
+                    )
+                    .map((page) => (
+                      <div
+                        key={page}
+                        className="relative overflow-hidden border border-[hsl(0_0%_88%)] bg-white"
+                      >
+                        <div
+                          className="pv-page absolute left-0 right-0 top-0 origin-top-left"
+                          style={
+                            {
+                              width,
+                              padding: pad,
+                              transform: `scale(${1 / Math.max(cols, rows)})`,
+                              marginTop: -(page - 1) * (height - pad * 2),
+                              fontFamily: p.theme.bodyFont,
+                              color: p.theme.bodyColor,
+                              fontSize: 15,
+                              lineHeight: 1.5,
+                            } as React.CSSProperties
+                          }
+                          dangerouslySetInnerHTML={{ __html: html }}
+                        />
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div
+                  className="pv-page"
+                  style={
+                    {
+                      padding: pad,
+                      fontFamily: p.theme.bodyFont,
+                      color: p.theme.bodyColor,
+                      fontSize: 15,
+                      lineHeight: 1.5,
+                      marginTop: -(shown - 1) * (height - pad * 2),
+                      '--pv-h-font': p.theme.headingFont,
+                      '--pv-h-color': p.theme.headingColor,
+                      '--pv-h-transform': p.theme.headingUpper
+                        ? 'uppercase'
+                        : 'none',
+                    } as React.CSSProperties
+                  }
+                  dangerouslySetInnerHTML={{ __html: html }}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -310,21 +425,33 @@ const PrintPane = (p: Props) => {
             onChange={(e) =>
               setPreview(
                 Math.min(
-                  p.pages,
+                  Math.max(1, sheets),
                   Math.max(1, Number(e.target.value.replace(/\D/g, '')) || 1),
                 ),
               )
             }
             className="h-[20px] w-[34px] border border-[hsl(var(--win-ribbon-border))] text-center text-[12px] outline-none"
           />
-          <span className="mx-2 text-[12px] text-[hsl(0_0%_30%)]">из {p.pages}</span>
+          <span className="mx-2 text-[12px] text-[hsl(0_0%_30%)]">
+            из {sheets}
+            {s.pagesPerSheet > 1 || willPrint.length !== p.pages
+              ? ` (страниц: ${willPrint.length})`
+              : ''}
+          </span>
           <button
             type="button"
-            onClick={() => setPreview((v) => Math.min(p.pages, v + 1))}
+            onClick={() => setPreview((v) => Math.min(sheets, v + 1))}
             className="px-1 text-[hsl(0_0%_40%)] hover:text-[hsl(0_0%_10%)]"
           >
             <Icon name="ChevronRight" size={14} />
           </button>
+
+          {s.copies > 1 && (
+            <span className="ml-3 text-[11px] text-[hsl(0_0%_45%)]">
+              Копий: {s.copies}
+              {s.collate ? ', с разбором' : ', без разбора'}
+            </span>
+          )}
 
           <div className="ml-auto flex items-center gap-2">
             <span className="text-[12px] text-[hsl(0_0%_30%)]">{zoom} %</span>
