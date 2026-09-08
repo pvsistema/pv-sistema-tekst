@@ -147,6 +147,27 @@ const collectRuns = (node: Node, fmt: Fmt): string => {
   if (tag === 'BR') return '<w:r><w:br/></w:r>';
   if (tag === 'IMG') return '';
 
+  /*
+   * Диаграмма нарисована как SVG. Его подписи не должны рассыпаться
+   * в Word отдельными словами — вместо этого ставим название.
+   * Проверяем до того, как отбросим сам SVG.
+   */
+  if (el.classList?.contains('pv-chart')) {
+    const raw = el.getAttribute('data-chart');
+
+    let title = 'Диаграмма';
+    try {
+      title = (JSON.parse(raw ?? '{}') as { title?: string }).title || title;
+    } catch {
+      /* настройки повреждены — оставляем общее название */
+    }
+
+    return run(`[${title}]`, { ...fmt, i: true });
+  }
+
+  /* остальные рисунки Word не получает */
+  if (tag === 'SVG' || tag === 'svg') return '';
+
   /* переход к позиции табуляции — символ табуляции Word */
   if ((el as HTMLElement).classList?.contains('pv-tab')) {
     return '<w:r><w:tab/></w:r>';
@@ -342,6 +363,12 @@ const bodyFromHtml = (root: Element): string => {
       [...el.children].some((c) => BLOCK.has(c.tagName))
     ) {
       [...el.children].forEach((c) => walkBlock(c, listCtx));
+      return;
+    }
+
+    /* диаграмма стоит отдельным блоком — отдаём её подписью */
+    if (el.classList?.contains('pv-chart')) {
+      out.push(`<w:p>${pPr({ align: 'center' })}${collectRuns(el, {})}</w:p>`);
       return;
     }
 

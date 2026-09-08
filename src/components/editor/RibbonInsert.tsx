@@ -109,10 +109,7 @@ const RibbonInsert = (p: TabActions) => {
     if (url) p.onCommand('createLink', url);
   };
 
-  const insertChart = () =>
-    html(
-      '<table style="width:60%"><tr><th>Показатель</th><th>Значение</th></tr><tr><td>Январь</td><td>120</td></tr><tr><td>Февраль</td><td>180</td></tr><tr><td>Март</td><td>240</td></tr></table><p><br></p>',
-    );
+  const insertChart = () => p.onChart?.();
 
   const insertTextBox = () => p.onTextBox?.();
 

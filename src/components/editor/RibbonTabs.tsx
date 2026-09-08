@@ -24,6 +24,8 @@ export interface TabActions {
   onQuickParts?: () => void;
   /** Вставка новой формулы */
   onEquationNew?: (display: boolean) => void;
+  /** Вставка диаграммы */
+  onChart?: () => void;
 }
 
 export const RibbonHelp = (p: TabActions) => (

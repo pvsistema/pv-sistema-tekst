@@ -65,6 +65,7 @@ const Ribbon = (p: Props) => {
     onDateTime: p.onDateTime,
     onQuickParts: p.onQuickParts,
     onEquationNew: p.onEquationNew,
+    onChart: p.onChart,
     zoom: p.zoom,
   };
 

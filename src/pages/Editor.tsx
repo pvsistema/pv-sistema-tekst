@@ -36,6 +36,8 @@ import AutoCorrectDialog from '@/components/editor/AutoCorrectDialog';
 import { useShapes } from '@/hooks/use-shapes';
 import { useInserts } from '@/hooks/use-inserts';
 import { useEquation } from '@/hooks/use-equation';
+import { useCharts } from '@/hooks/use-charts';
+import ChartDialog from '@/components/editor/ChartDialog';
 import SymbolDialog from '@/components/editor/SymbolDialog';
 import {
   DateTimeDialog,
@@ -281,6 +283,13 @@ const Editor = () => {
 
   const docStyles = useStyles({
     editorRef,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+  });
+
+  const charts = useCharts({
+    editorRef,
+    exec,
     recount,
     notify: (title, description) => toast({ title, description }),
   });
@@ -856,6 +865,7 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onEquationReady={equation.insertReady}
         onEquationDisplay={equation.toggleDisplay}
         onEquationRemove={equation.removeEquation}
+        onChart={charts.open}
         onRemoveBreak={breaks.removeOne}
         onRemoveAllBreaks={breaks.removeAll}
         styles={docStyles.styles}
@@ -1093,6 +1103,13 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
           setFileMenu(false);
           setOptionsOpen(true);
         }}
+      />
+
+      <ChartDialog
+        open={charts.dialogOpen}
+        initial={charts.initial}
+        onClose={() => charts.setDialogOpen(false)}
+        onApply={charts.apply}
       />
 
       <SymbolDialog
