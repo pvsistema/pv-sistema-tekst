@@ -328,6 +328,219 @@ const wrapLists = (html: string) =>
     },
   );
 
+/** Что удалось прочитать из файла помимо самого текста */
+export interface DocxExtras {
+  headerText: string;
+  footerText: string;
+  headerAlign: 'left' | 'center' | 'right';
+  footerAlign: 'left' | 'center' | 'right';
+  differentFirst: boolean;
+  /** Где стоит номер страницы */
+  numberPosition:
+    | 'none'
+    | 'top-left'
+    | 'top-center'
+    | 'top-right'
+    | 'bottom-left'
+    | 'bottom-center'
+    | 'bottom-right';
+  numberStart: number;
+  /** Размер листа и поля, в сантиметрах */
+  paperWidth?: number;
+  paperHeight?: number;
+  landscape?: boolean;
+  marginTop?: number;
+  marginBottom?: number;
+  marginLeft?: number;
+  marginRight?: number;
+  gutter?: number;
+  /** Число колонок и промежуток между ними */
+  columns?: number;
+  columnGap?: number;
+}
+
+/** Выравнивание абзаца колонтитула */
+const alignOf = (xml: string): 'left' | 'center' | 'right' => {
+  const jc = xml.match(/<w:jc[^>]*w:val="(\w+)"/)?.[1];
+  if (jc === 'center') return 'center';
+  if (jc === 'right' || jc === 'end') return 'right';
+  return 'left';
+};
+
+/**
+ * Текст колонтитула без служебных полей. Поле с номером страницы
+ * заменяем нашей пометкой — редактор подставит настоящий номер.
+ */
+const furnitureText = (xml: string): { text: string; hasNumber: boolean } => {
+  const hasNumber = /\bPAGE\b/.test(xml) && !/NUMPAGES/.test(xml);
+
+  /*
+   * Внутри поля с номером Word держит показанное значение — обычно
+   * это цифра. В текст колонтитула она попадать не должна: номер
+   * подставит редактор.
+   */
+  const clean = hasNumber
+    ? xml.replace(
+        /<w:fldChar[^>]*w:fldCharType="begin"[\s\S]*?<w:fldChar[^>]*w:fldCharType="end"[^>]*\/>/g,
+        '',
+      )
+    : xml;
+
+  const text = [...clean.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)]
+    .map((m) => m[1])
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return { text, hasNumber };
+};
+
+/**
+ * Читает колонтитулы, нумерацию страниц и параметры листа.
+ * Возвращает null, если файл не открывается.
+ */
+export const docxExtras = (bytes: Uint8Array): DocxExtras | null => {
+  let files: Record<string, Uint8Array>;
+
+  try {
+    files = unzipSync(bytes, {
+      filter: (f) =>
+        f.name === 'word/document.xml' ||
+        f.name === 'word/_rels/document.xml.rels' ||
+        /^word\/(header|footer)\d*\.xml$/.test(f.name),
+    });
+  } catch {
+    return null;
+  }
+
+  const doc = files['word/document.xml'];
+  if (!doc) return null;
+
+  const xml = strFromU8(doc);
+
+  const out: DocxExtras = {
+    headerText: '',
+    footerText: '',
+    headerAlign: 'center',
+    footerAlign: 'center',
+    differentFirst: false,
+    numberPosition: 'none',
+    numberStart: 1,
+  };
+
+  /* последний раздел документа задаёт вид страницы */
+  const sect = [...xml.matchAll(/<w:sectPr\b[\s\S]*?<\/w:sectPr>/g)].pop()?.[0];
+  if (!sect) return out;
+
+  out.differentFirst = /<w:titlePg\b/.test(sect);
+
+  /* размер листа */
+  const pgSz = sect.match(/<w:pgSz\b[^>]*\/?>/)?.[0] ?? '';
+  const w = pgSz.match(/w:w="(\d+)"/)?.[1];
+  const h = pgSz.match(/w:h="(\d+)"/)?.[1];
+  const landscape = /w:orient="landscape"/.test(pgSz);
+
+  if (w && h) {
+    const cmW = twipsToCm(w);
+    const cmH = twipsToCm(h);
+
+    /* в альбомной ориентации Word пишет уже перевёрнутые размеры */
+    out.landscape = landscape;
+    out.paperWidth = landscape ? Math.min(cmW, cmH) : cmW;
+    out.paperHeight = landscape ? Math.max(cmW, cmH) : cmH;
+  }
+
+  /* поля страницы */
+  const pgMar = sect.match(/<w:pgMar\b[^>]*\/?>/)?.[0] ?? '';
+  const mar = (name: string) => {
+    const v = pgMar.match(new RegExp(`w:${name}="(-?\\d+)"`))?.[1];
+    return v === undefined ? undefined : Math.max(0, twipsToCm(v));
+  };
+
+  out.marginTop = mar('top');
+  out.marginBottom = mar('bottom');
+  out.marginLeft = mar('left');
+  out.marginRight = mar('right');
+  out.gutter = mar('gutter');
+
+  /* колонки */
+  const cols = sect.match(/<w:cols\b[^>]*\/?>/)?.[0] ?? '';
+  const num = cols.match(/w:num="(\d+)"/)?.[1];
+  const space = cols.match(/w:space="(\d+)"/)?.[1];
+
+  if (num) out.columns = Math.max(1, Number(num));
+  if (space) out.columnGap = twipsToCm(space);
+
+  /* с какого номера начинается нумерация */
+  const start = sect.match(/<w:pgNumType[^>]*w:start="(\d+)"/)?.[1];
+  if (start) out.numberStart = Number(start);
+
+  /* связь ссылок раздела с файлами колонтитулов */
+  const rels = files['word/_rels/document.xml.rels']
+    ? strFromU8(files['word/_rels/document.xml.rels'])
+    : '';
+
+  const fileById = new Map<string, string>();
+  for (const m of rels.matchAll(
+    /<Relationship[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/g,
+  )) {
+    fileById.set(m[1], `word/${m[2].replace(/^\/?word\//, '')}`);
+  }
+
+  const readPart = (kind: 'header' | 'footer') => {
+    /* берём обычный колонтитул, а не тот, что только для первой страницы */
+    const refs = [
+      ...sect.matchAll(
+        new RegExp(
+          `<w:${kind}Reference[^>]*w:type="(\\w+)"[^>]*r:id="([^"]+)"`,
+          'g',
+        ),
+      ),
+    ];
+
+    const ref =
+      refs.find((r) => r[1] === 'default') ?? refs.find((r) => r[1] !== 'first');
+
+    if (!ref) return null;
+
+    const name = fileById.get(ref[2]);
+    const part = name ? files[name] : undefined;
+    if (!part) return null;
+
+    const partXml = strFromU8(part);
+    const { text, hasNumber } = furnitureText(partXml);
+
+    return { text, hasNumber, align: alignOf(partXml) };
+  };
+
+  const header = readPart('header');
+  const footer = readPart('footer');
+
+  if (header) {
+    out.headerText = header.text;
+    out.headerAlign = header.align;
+
+    if (header.hasNumber) {
+      out.numberPosition = `top-${header.align}` as DocxExtras['numberPosition'];
+      /* номер вставит редактор — одинокую цифру из текста убираем */
+      out.headerText = header.text.replace(/^\s*\d+\s*$/, '').trim();
+    }
+  }
+
+  if (footer) {
+    out.footerText = footer.text;
+    out.footerAlign = footer.align;
+
+    if (footer.hasNumber) {
+      out.numberPosition =
+        `bottom-${footer.align}` as DocxExtras['numberPosition'];
+      out.footerText = footer.text.replace(/^\s*\d+\s*$/, '').trim();
+    }
+  }
+
+  return out;
+};
+
 /**
  * Превращает содержимое .docx в разметку документа.
  * Возвращает null, если это не документ Word.

@@ -134,7 +134,41 @@ const Editor = () => {
   const { pickFile, dragging } = useFileOpen(
     useCallback(
       (file) => {
-        importDocument(titleFromFileName(file.name), file.html);
+        /* переносим вид страницы и колонтитулы из открытого файла */
+        const x = file.extras;
+
+        const furniture = x
+          ? {
+              ...DEFAULT_FURNITURE,
+              headerText: x.headerText,
+              footerText: x.footerText,
+              headerAlign: x.headerAlign,
+              footerAlign: x.footerAlign,
+              differentFirst: x.differentFirst,
+              numberPosition: x.numberPosition,
+              numberStart: x.numberStart,
+            }
+          : undefined;
+
+        importDocument(titleFromFileName(file.name), file.html, furniture);
+
+        if (x) {
+          setSetup((prev) => ({
+            ...prev,
+            paperWidth: x.paperWidth ?? prev.paperWidth,
+            paperHeight: x.paperHeight ?? prev.paperHeight,
+            landscape: x.landscape ?? prev.landscape,
+            marginTop: x.marginTop ?? prev.marginTop,
+            marginBottom: x.marginBottom ?? prev.marginBottom,
+            marginLeft: x.marginLeft ?? prev.marginLeft,
+            marginRight: x.marginRight ?? prev.marginRight,
+            gutter: x.gutter ?? prev.gutter,
+            columns: x.columns ?? prev.columns,
+            columnGap: x.columnGap ?? prev.columnGap,
+            margin: x.marginTop ?? prev.margin,
+          }));
+        }
+
         toast({ title: 'Документ открыт', description: file.name });
       },
       [importDocument],

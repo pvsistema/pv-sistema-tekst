@@ -7,6 +7,9 @@ interface Props {
   /** Высота одной страницы и поля — чтобы попасть в нужное место листа */
   pageHeight: number;
   padding: number;
+  /** Поля слева и справа — колонтитул выравнивается по тексту */
+  padLeft?: number;
+  padRight?: number;
   contentHeight: number;
   docTitle: string;
   onEdit: (part: 'header' | 'footer') => void;
@@ -27,6 +30,8 @@ const PageFurnitureLayer = ({
   pages,
   pageHeight,
   padding,
+  padLeft,
+  padRight,
   contentHeight,
   docTitle,
   onEdit,
@@ -71,8 +76,13 @@ const PageFurnitureLayer = ({
                 title="Изменить верхний колонтитул"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => onEdit('header')}
-                className="group absolute left-0 right-0 z-[15] flex items-center px-[76px] text-[12px] text-[hsl(0_0%_35%)] hover:bg-[hsl(210_60%_50%)]/5"
-                style={{ top: top + padding / 3, height: padding / 2 }}
+                className="group absolute left-0 right-0 z-[15] flex items-center text-[12px] text-[hsl(0_0%_35%)] hover:bg-[hsl(210_60%_50%)]/5"
+                style={{
+                  top: top + padding / 3,
+                  height: padding / 2,
+                  paddingLeft: padLeft ?? 76,
+                  paddingRight: padRight ?? 76,
+                }}
               >
                 <span
                   className={`flex w-full items-center gap-2 ${
@@ -104,10 +114,12 @@ const PageFurnitureLayer = ({
                 title="Изменить нижний колонтитул"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => onEdit('footer')}
-                className="absolute left-0 right-0 z-[15] flex items-center px-[76px] text-[12px] text-[hsl(0_0%_35%)] hover:bg-[hsl(210_60%_50%)]/5"
+                className="absolute left-0 right-0 z-[15] flex items-center text-[12px] text-[hsl(0_0%_35%)] hover:bg-[hsl(210_60%_50%)]/5"
                 style={{
                   top: top + pageHeight - padding / 1.6,
                   height: padding / 2,
+                  paddingLeft: padLeft ?? 76,
+                  paddingRight: padRight ?? 76,
                 }}
               >
                 <span

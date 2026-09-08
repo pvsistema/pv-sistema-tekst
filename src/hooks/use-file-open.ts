@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { docxToHtml, isZip, rtfToHtml } from '@/lib/docx-reader';
+import { docxExtras, docxToHtml, isZip, rtfToHtml } from '@/lib/docx-reader';
+import type { DocxExtras } from '@/lib/docx-reader';
 
 const SUPPORTED = /\.(docx?|html?|txt|rtf|md)$/i;
 
 export interface IncomingFile {
   name: string;
   html: string;
+  /** Колонтитулы и параметры листа, если файл их содержит */
+  extras?: DocxExtras;
 }
 
 /** Убирает из открытого файла всё, кроме содержимого документа */
@@ -116,7 +119,12 @@ export const useFileOpen = (
   const handleBytes = useCallback(
     (name: string, bytes: Uint8Array) => {
       try {
-        onOpen({ name, html: fileToHtml(bytes) });
+        /* у файлов Word дополнительно читаем колонтитулы и вид страницы */
+        onOpen({
+          name,
+          html: fileToHtml(bytes),
+          extras: isZip(bytes) ? (docxExtras(bytes) ?? undefined) : undefined,
+        });
       } catch (e) {
         onError?.(e instanceof Error ? e.message : 'Не удалось открыть файл');
       }

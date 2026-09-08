@@ -65,7 +65,9 @@ export const useDocuments = () => {
     setDocuments((prev) => [doc, ...prev]);
     setActiveId(doc.id);
     return doc;
-  }, []);
+    },
+    [],
+  );
 
   const updateDocument = useCallback(
     (id: string, patch: Partial<Omit<PvDocument, 'id'>>) => {
@@ -95,17 +97,21 @@ export const useDocuments = () => {
     [activeId],
   );
 
-  const importDocument = useCallback((title: string, html: string) => {
+  const importDocument = useCallback(
+    (title: string, html: string, furniture?: unknown) => {
     const doc: PvDocument = {
       id: `doc-${Date.now()}`,
       title,
       html,
       updatedAt: Date.now(),
+      furniture,
     };
     setDocuments((prev) => [doc, ...prev]);
     setActiveId(doc.id);
     return doc;
-  }, []);
+    },
+    [],
+  );
 
   return {
     documents,
