@@ -15,6 +15,8 @@ import FindReplaceDialog from '@/components/editor/FindReplaceDialog';
 import StatusBar from '@/components/editor/StatusBar';
 import FileMenu from '@/components/editor/FileMenu';
 import DropOverlay from '@/components/editor/DropOverlay';
+import UnsavedDialog from '@/components/editor/UnsavedDialog';
+import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
 import type { DocTemplate } from '@/components/editor/fileTemplates';
 import { htmlToDocx } from '@/lib/docx-writer';
 import { useReferences } from '@/hooks/use-references';
@@ -135,16 +137,36 @@ const Editor = () => {
     setSavedAt(Date.now());
   }, [active, updateDocument]);
 
+  /* защита от потери несохранённых правок */
+  const guardApi = useUnsavedGuard({
+    getHtml: useCallback(() => editorRef.current?.innerHTML ?? '', []),
+    docId: active?.id ?? null,
+  });
+
+  const { check: checkDirty, markSaved } = guardApi;
+
+  const handleInput = useCallback(() => {
+    recount();
+    checkDirty();
+  }, [recount, checkDirty]);
+
   useEffect(() => {
     if (!options.autoSave) return;
     const id = window.setInterval(() => {
       if (editorRef.current && active) {
         updateDocument(active.id, { html: editorRef.current.innerHTML });
         setSavedAt(Date.now());
+        markSaved();
       }
     }, Math.max(1, options.autoSaveMinutes) * 60_000);
     return () => window.clearInterval(id);
-  }, [active, updateDocument, options.autoSave, options.autoSaveMinutes]);
+  }, [
+    active,
+    updateDocument,
+    markSaved,
+    options.autoSave,
+    options.autoSaveMinutes,
+  ]);
 
   /* знаки форматирования и подсветка ошибок из параметров */
   useEffect(() => {
@@ -266,17 +288,20 @@ const Editor = () => {
   };
 
   /* ── файл ── */
-  const handleNew = () => {
-    persist();
-    createDocument();
-    toast({ title: 'Создан новый документ' });
-  };
+  const handleNew = () =>
+    guardApi.guard('new', () => {
+      createDocument();
+      toast({ title: 'Создан новый документ' });
+    });
 
-  const handleTemplate = (t: DocTemplate) => {
-    persist();
-    importDocument(t.title === 'Новый документ' ? 'Документ 1' : t.title, t.html);
-    toast({ title: 'Документ создан', description: t.title });
-  };
+  const handleTemplate = (t: DocTemplate) =>
+    guardApi.guard('new', () => {
+      importDocument(
+        t.title === 'Новый документ' ? 'Документ 1' : t.title,
+        t.html,
+      );
+      toast({ title: 'Документ создан', description: t.title });
+    });
 
   const togglePin = (id: string) =>
     setPinned((prev) => {
@@ -293,13 +318,14 @@ const Editor = () => {
 
   const handleOpen = () => {
     setFileMenu(false);
-    pickFile();
+    guardApi.guard('open', pickFile);
   };
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     persist();
+    guardApi.markSaved();
     toast({ title: 'Документ сохранён' });
-  };
+  }, [persist, guardApi]);
 
   const download = (content: string, filename: string, type: string) => {
     const blob = new Blob([content], { type });
@@ -461,8 +487,17 @@ const Editor = () => {
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-white font-body">
       <DropOverlay visible={dragging} />
+      <UnsavedDialog
+        action={guardApi.pending}
+        title={active?.title ?? ''}
+        onSave={() => guardApi.confirmSave(handleSave)}
+        onDiscard={guardApi.discard}
+        onCancel={guardApi.cancel}
+      />
       <WindowTitleBar
         title={active?.title ?? ''}
+        dirty={guardApi.dirty}
+        onClose={guardApi.requestClose}
         onSave={handleSave}
         onUndo={() => exec('undo')}
         onRedo={() => exec('redo')}
@@ -597,7 +632,7 @@ const Editor = () => {
           ref={editorRef}
           zoom={zoom}
           pages={stats.pages}
-          onInput={recount}
+          onInput={handleInput}
           onScroll={onCanvasScroll}
           theme={theme}
           setup={setup}
@@ -644,7 +679,7 @@ const Editor = () => {
         onClose={() => setFileMenu(false)}
         documents={documents}
         activeId={activeId}
-        onSelect={setActiveId}
+        onSelect={(id) => guardApi.guard('switch', () => setActiveId(id))}
         onRemove={removeDocument}
         onNew={handleNew}
         onTemplate={handleTemplate}

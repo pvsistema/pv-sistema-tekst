@@ -12,6 +12,9 @@ public sealed class MainForm : Form
     private string? _startupFile;
     private bool _ready;
 
+    /* редактор разрешил закрытие: несохранённых правок нет */
+    private bool _allowClose;
+
     public MainForm(string? startupFile = null)
     {
         _startupFile = startupFile;
@@ -117,8 +120,50 @@ public sealed class MainForm : Form
             _startupFile = null;
         }
 
+        /* команды окна из редактора: закрыть, свернуть, развернуть */
+        core.WebMessageReceived += (_, e) =>
+        {
+            string raw;
+            try { raw = e.WebMessageAsJson; }
+            catch { return; }
+
+            if (raw.Contains("pvs-close"))
+            {
+                _allowClose = true;
+                BeginInvoke(Close);
+            }
+            else if (raw.Contains("pvs-minimize"))
+            {
+                BeginInvoke(() => WindowState = FormWindowState.Minimized);
+            }
+            else if (raw.Contains("pvs-maximize"))
+            {
+                BeginInvoke(() =>
+                    WindowState = WindowState == FormWindowState.Maximized
+                        ? FormWindowState.Normal
+                        : FormWindowState.Maximized);
+            }
+        };
+
         core.NavigationCompleted += (_, _) => _ready = true;
         core.Navigate($"https://{VirtualHost}/index.html");
+    }
+
+    /// <summary>
+    /// Крестик окна не закрывает программу сразу: сначала редактор
+    /// спрашивает про несохранённые правки.
+    /// </summary>
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        if (!_allowClose && _ready && _web.CoreWebView2 is not null)
+        {
+            e.Cancel = true;
+            _web.CoreWebView2.ExecuteScriptAsync(
+                "window.postMessage({ type: 'pvs-close-request' }, '*');");
+            return;
+        }
+
+        base.OnFormClosing(e);
     }
 
     /// <summary>Открывает документ, переданный из Проводника при работающей программе.</summary>
