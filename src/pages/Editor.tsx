@@ -40,6 +40,9 @@ import { useCharts } from '@/hooks/use-charts';
 import ChartDialog from '@/components/editor/ChartDialog';
 import PageSetupDialog from '@/components/editor/PageSetupDialog';
 import { useOutline } from '@/hooks/use-outline';
+import { useContextMenu } from '@/hooks/use-context-menu';
+import DocumentContextMenu from '@/components/editor/DocumentContextMenu';
+import MiniToolbar from '@/components/editor/MiniToolbar';
 import { useTemplates } from '@/hooks/use-templates';
 import SaveTemplateDialog from '@/components/editor/SaveTemplateDialog';
 import SymbolDialog from '@/components/editor/SymbolDialog';
@@ -118,7 +121,11 @@ const Editor = () => {
 
   /* конструктор */
   const [theme, setTheme] = useState<DocTheme>(THEMES[0]);
-  const [paraSpacing, setParaSpacing] = useState(8);
+  /* интервал между абзацами; выбранный по умолчанию берём из памяти */
+  const [paraSpacing, setParaSpacing] = useState(() => {
+    const saved = Number(localStorage.getItem('pv-tekst-para-spacing'));
+    return Number.isFinite(saved) && saved >= 0 ? saved : 8;
+  });
   const [watermark, setWatermark] = useState('');
   const [pageColor, setPageColor] = useState('#ffffff');
   const [pageBorder, setPageBorder] = useState(false);
@@ -292,6 +299,14 @@ const Editor = () => {
   });
 
   const [pageSetupOpen, setPageSetupOpen] = useState(false);
+
+  const ctx = useContextMenu({
+    editorRef,
+    exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+    miniEnabled: options.miniToolbar,
+  });
 
   const outline = useOutline({
     editorRef,
@@ -878,6 +893,21 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onFind={() => setFindOpen(true)}
         onReplace={() => setFindOpen(true)}
         onPaste={handlePaste}
+        onPasteMode={ctx.paste}
+        onParaSpacingSet={(v) => {
+          setParaSpacing(v);
+          toast({
+            title: 'Интервал между абзацами изменён',
+            description: `${v} пт после абзаца`,
+          });
+        }}
+        onParaSpacingDefault={() => {
+          localStorage.setItem('pv-tekst-para-spacing', String(paraSpacing));
+          toast({
+            title: 'Интервал сохранён',
+            description: 'Новые документы будут открываться с ним',
+          });
+        }}
         onCopy={handleCopy}
         onCut={handleCut}
         inTable={tables.inTable}
@@ -1169,6 +1199,37 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
           setFileMenu(false);
           setOptionsOpen(true);
         }}
+      />
+
+      <DocumentContextMenu
+        target={ctx.target}
+        onClose={ctx.closeMenu}
+        onCut={handleCut}
+        onCopy={handleCopy}
+        onPaste={ctx.paste}
+        onFontDialog={fmt.openFont}
+        onParaDialog={fmt.openPara}
+        onInsertRow={() => tables.addRow('below')}
+        onInsertColumn={() => tables.addColumn('right')}
+        onDeleteRow={tables.removeRow}
+        onDeleteColumn={tables.removeColumn}
+        onLink={() => {
+          const url = window.prompt('Адрес ссылки', 'https://');
+          if (url) exec('createLink', url);
+        }}
+        onComment={review.newComment}
+        onSelectAll={() => exec('selectAll')}
+      />
+
+      <MiniToolbar
+        at={ctx.mini}
+        fontFamily={fontFamily}
+        fontSize={fontSize}
+        onCommand={exec}
+        onFontFamily={applyFontFamily}
+        onFontSize={applyFontSize}
+        onHighlight={() => exec('hiliteColor', '#ffff00')}
+        onStyle={fmt.openFont}
       />
 
       <PageSetupDialog

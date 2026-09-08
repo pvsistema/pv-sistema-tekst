@@ -9,6 +9,9 @@ import {
   SplitBtn,
 } from './RibbonControls';
 import { BULLETS, NUMBER_FORMATS } from '@/hooks/use-format';
+import type { PasteMode } from '@/lib/clipboard';
+import { PASTE_MODES } from '@/lib/clipboard';
+import { PARA_SPACING_SETS } from '@/lib/doc-styles';
 import type { DocStyle } from '@/lib/doc-styles';
 import { styleCss } from '@/lib/doc-styles';
 
@@ -41,6 +44,11 @@ export interface RibbonHomeProps {
   onFind: () => void;
   onReplace: () => void;
   onPaste: () => void;
+  /** Вставка выбранным способом */
+  onPasteMode?: (mode: PasteMode) => void;
+  /** Набор интервалов между абзацами */
+  onParaSpacingSet?: (value: number) => void;
+  onParaSpacingDefault?: () => void;
   onCopy: () => void;
   onCut: () => void;
   onFontDialog: () => void;
@@ -102,6 +110,17 @@ const RibbonHome = (p: RibbonHomeProps) => (
     <RibbonGroup title="Буфер обмена">
       <BigBtn icon="ClipboardPaste" label="Вставить" onClick={p.onPaste} />
       <VStack>
+        <Menu
+          icon="ClipboardList"
+          title="Параметры вставки"
+          label="Параметры вставки"
+          width={250}
+          items={PASTE_MODES.map((m) => ({
+            label: m.label,
+            hint: m.hint,
+            run: () => p.onPasteMode?.(m.value),
+          }))}
+        />
         <SmallBtn icon="Scissors" title="Вырезать" label="Вырезать" onClick={p.onCut} />
         <SmallBtn icon="Copy" title="Копировать" label="Копировать" onClick={p.onCopy} />
         <SmallBtn
@@ -350,6 +369,26 @@ const RibbonHome = (p: RibbonHomeProps) => (
             { label: 'Создать стиль…', run: p.onStyleCreate },
             { label: 'Обновить по образцу', run: p.onStyleUpdate },
             { label: 'Очистить форматирование', run: p.onStyleClear },
+          ]}
+        />
+
+        <Menu
+          icon="Palette"
+          title="Изменить стили"
+          width={250}
+          items={[
+            ...PARA_SPACING_SETS.map((set) => ({
+              group: set.first ? 'Интервал между абзацами' : undefined,
+              label: set.label,
+              hint: set.hint,
+              run: () => p.onParaSpacingSet?.(set.value),
+            })),
+            {
+              group: 'Применение',
+              label: 'По умолчанию для новых документов',
+              hint: 'Запомнить выбранный интервал',
+              run: () => p.onParaSpacingDefault?.(),
+            },
           ]}
         />
       </div>

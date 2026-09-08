@@ -318,3 +318,18 @@ export const repaintStyle = (
   marked.forEach((el) => paint(el, style));
   return marked.length;
 };
+/** Наборы интервалов между абзацами — меню «Изменить стили» */
+export const PARA_SPACING_SETS: {
+  label: string;
+  hint: string;
+  value: number;
+  /** Первый пункт группы — над ним рисуется заголовок */
+  first?: boolean;
+}[] = [
+  { label: 'Без интервала', hint: 'Абзацы идут вплотную', value: 0, first: true },
+  { label: 'Сжатый', hint: '4 пункта после абзаца', value: 4 },
+  { label: 'Обычный', hint: '8 пунктов после абзаца', value: 8 },
+  { label: 'Умеренный', hint: '12 пунктов после абзаца', value: 12 },
+  { label: 'Свободный', hint: '18 пунктов после абзаца', value: 18 },
+  { label: 'Двойной', hint: '24 пункта после абзаца', value: 24 },
+];

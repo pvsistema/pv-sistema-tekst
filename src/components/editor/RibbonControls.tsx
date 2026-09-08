@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from '@/components/ui/icon';
 
 export const RibbonGroup = ({
@@ -253,6 +254,10 @@ export const Menu = ({
   width?: number;
 }) => {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  /* меню рисуем поверх страницы — лента обрезает выпадающие списки */
+  const box = btnRef.current?.getBoundingClientRect();
 
   /* клик мимо меню закрывает его */
   useEffect(() => {
@@ -265,6 +270,7 @@ export const Menu = ({
   return (
     <div className="relative" onMouseDown={(e) => e.stopPropagation()}>
       <button
+        ref={btnRef}
         type="button"
         title={title}
         data-active={active ? 'true' : 'false'}
@@ -283,10 +289,17 @@ export const Menu = ({
         <Icon name="ChevronDown" size={9} />
       </button>
 
-      {open && (
+      {open &&
+        box &&
+        createPortal(
         <div
-          className="absolute left-0 top-full z-50 mt-[2px] rounded-[3px] border border-[hsl(var(--win-ribbon-border))] bg-white py-1 shadow-lg"
-          style={{ width }}
+          className="fixed z-[122] max-h-[70vh] overflow-y-auto rounded-[3px] border border-[hsl(var(--win-ribbon-border))] bg-white py-1 shadow-xl"
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            width,
+            left: Math.min(box.left, window.innerWidth - width - 8),
+            top: box.bottom + 2,
+          }}
         >
           {items.map((it) => (
             <div key={it.label}>
@@ -313,7 +326,8 @@ export const Menu = ({
               </button>
             </div>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
