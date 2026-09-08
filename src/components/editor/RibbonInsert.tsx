@@ -133,7 +133,7 @@ const RibbonInsert = (p: TabActions) => {
 
   const insertSymbol = () => p.onSymbol?.();
 
-  const insertEquation = () => p.onCommand('insertText', 'x = (−b ± √(b² − 4ac)) / 2a');
+  const insertEquation = () => p.onEquationNew?.(true);
 
   return (
     <>

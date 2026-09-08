@@ -35,6 +35,7 @@ import {
 import AutoCorrectDialog from '@/components/editor/AutoCorrectDialog';
 import { useShapes } from '@/hooks/use-shapes';
 import { useInserts } from '@/hooks/use-inserts';
+import { useEquation } from '@/hooks/use-equation';
 import SymbolDialog from '@/components/editor/SymbolDialog';
 import {
   DateTimeDialog,
@@ -282,6 +283,16 @@ const Editor = () => {
     editorRef,
     recount,
     notify: (title, description) => toast({ title, description }),
+  });
+
+  const [inEquation, setInEquation] = useState(false);
+
+  const equation = useEquation({
+    editorRef,
+    exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+    onActive: setInEquation,
   });
 
   const inserts = useInserts({
@@ -715,6 +726,13 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
       const start =
         node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element | null);
 
+      /* внутри формулы Tab ведёт к следующему полю ввода */
+      if (start?.closest('.pv-equation')) {
+        e.preventDefault();
+        equation.nextSlot();
+        return;
+      }
+
       /* в таблице Tab переходит к следующей ячейке */
       const cell = start?.closest('td, th');
       if (cell) {
@@ -751,7 +769,7 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
 
     el.addEventListener('keydown', onTab);
     return () => el.removeEventListener('keydown', onTab);
-  }, [exec, tables, tabs, autocorrect]);
+  }, [exec, tables, tabs, autocorrect, equation]);
 
   /* ── горячие клавиши ── */
   useEffect(() => {
@@ -831,6 +849,13 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onSymbol={() => inserts.setSymbolOpen(true)}
         onDateTime={() => inserts.setDateOpen(true)}
         onQuickParts={() => inserts.setPartsOpen(true)}
+        inEquation={inEquation}
+        onEquationNew={equation.insertNew}
+        onEquationStructure={equation.insertStructure}
+        onEquationSymbol={equation.insertSymbol}
+        onEquationReady={equation.insertReady}
+        onEquationDisplay={equation.toggleDisplay}
+        onEquationRemove={equation.removeEquation}
         onRemoveBreak={breaks.removeOne}
         onRemoveAllBreaks={breaks.removeAll}
         styles={docStyles.styles}

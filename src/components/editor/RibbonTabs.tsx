@@ -22,6 +22,8 @@ export interface TabActions {
   onSymbol?: () => void;
   onDateTime?: () => void;
   onQuickParts?: () => void;
+  /** Вставка новой формулы */
+  onEquationNew?: (display: boolean) => void;
 }
 
 export const RibbonHelp = (p: TabActions) => (

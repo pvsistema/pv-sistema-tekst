@@ -345,6 +345,161 @@
     content: "________________________________________________";
   }
 
+  /* ── формулы ── */
+  .pv-page .pv-equation {
+    @apply inline-block align-middle px-[2px] font-serif text-[1.05em] leading-none;
+    font-family: 'Cambria Math', Cambria, Georgia, serif;
+  }
+
+  .pv-page .pv-equation-block {
+    @apply my-3 block text-center;
+  }
+
+  .pv-page .pv-equation-active {
+    @apply rounded-[2px] bg-[hsl(215_78%_33%/0.07)]
+      outline-dashed outline-1 outline-offset-2 outline-[hsl(var(--win-title))];
+  }
+
+  /* поле ввода внутри формулы */
+  .pv-page .pv-eq-slot {
+    @apply inline-block min-w-[12px] px-[1px] text-center outline-none;
+  }
+
+  /* пустое поле показывается пунктирным квадратиком */
+  .pv-page .pv-eq-slot:empty::before {
+    content: '';
+    @apply inline-block h-[13px] w-[11px] rounded-[1px]
+      border border-dashed border-[hsl(0_0%_62%)] align-middle;
+  }
+
+  .pv-page .pv-eq-slot:focus:empty::before {
+    @apply border-solid border-[hsl(var(--win-title))] bg-[hsl(215_78%_33%/0.08)];
+  }
+
+  /* дробь: числитель над знаменателем с чертой между ними */
+  .pv-page .pv-eq-frac {
+    @apply inline-flex flex-col items-center align-middle;
+    vertical-align: -0.42em;
+  }
+
+  .pv-page .pv-eq-num {
+    @apply block px-[3px] text-[0.92em] leading-[1.15];
+  }
+
+  .pv-page .pv-eq-den {
+    @apply block border-t border-current px-[3px] text-[0.92em] leading-[1.15];
+  }
+
+  .pv-page .pv-eq-skew {
+    @apply inline-block align-middle;
+  }
+
+  .pv-page .pv-eq-slash {
+    @apply px-[1px];
+  }
+
+  /* индексы */
+  .pv-page .pv-eq-script {
+    @apply inline-block align-middle;
+  }
+
+  .pv-page .pv-eq-sup {
+    @apply inline-block align-super text-[0.68em] leading-none;
+  }
+
+  .pv-page .pv-eq-sub {
+    @apply inline-block align-sub text-[0.68em] leading-none;
+  }
+
+  /* верхний и нижний индекс друг под другом */
+  .pv-page .pv-eq-scripts {
+    @apply inline-flex flex-col items-start align-middle text-[0.68em] leading-[1.1];
+  }
+
+  .pv-page .pv-eq-scripts .pv-eq-sup,
+  .pv-page .pv-eq-scripts .pv-eq-sub {
+    @apply align-baseline text-[1em];
+  }
+
+  /* корень */
+  .pv-page .pv-eq-radical {
+    @apply inline-block align-middle;
+  }
+
+  .pv-page .pv-eq-degree {
+    @apply inline-block align-super text-[0.6em] leading-none;
+    margin-right: -0.35em;
+  }
+
+  .pv-page .pv-eq-sign {
+    @apply inline-block;
+  }
+
+  .pv-page .pv-eq-under {
+    @apply inline-block border-t border-current px-[2px] pt-[1px];
+  }
+
+  /* крупные знаки: интеграл, сумма, произведение */
+  .pv-page .pv-eq-op {
+    @apply inline-flex items-center align-middle;
+  }
+
+  .pv-page .pv-eq-big {
+    @apply text-[1.7em] leading-[0.85];
+  }
+
+  .pv-page .pv-eq-stack {
+    @apply inline-flex flex-col items-center leading-none;
+  }
+
+  .pv-page .pv-eq-over,
+  .pv-page .pv-eq-under-limit {
+    @apply block text-[0.62em] leading-[1.25];
+  }
+
+  .pv-page .pv-eq-body {
+    @apply inline-block pl-[2px];
+  }
+
+  .pv-page .pv-eq-name {
+    @apply inline-block pr-[1px] not-italic;
+  }
+
+  /* скобки тянутся по высоте содержимого */
+  .pv-page .pv-eq-bracket {
+    @apply inline-flex items-center align-middle;
+  }
+
+  .pv-page .pv-eq-paren {
+    @apply inline-block scale-y-[1.35] px-[1px];
+  }
+
+  .pv-page .pv-eq-tall {
+    @apply scale-y-[2.4];
+  }
+
+  /* диакритические знаки над буквой */
+  .pv-page .pv-eq-accent {
+    @apply inline-flex flex-col items-center align-middle leading-none;
+  }
+
+  .pv-page .pv-eq-mark {
+    @apply block text-[0.8em] leading-[0.6];
+  }
+
+  /* матрица */
+  .pv-page .pv-eq-matrix {
+    @apply inline-flex flex-col gap-[2px] px-[3px];
+  }
+
+  .pv-page .pv-eq-row {
+    @apply flex justify-center gap-[8px];
+  }
+
+  .pv-page .pv-eq-func {
+    @apply inline-block align-middle;
+  }
+
   /* фигуры, надписи и фигурный текст */
   .pv-page .pv-object {
     @apply relative select-none;
