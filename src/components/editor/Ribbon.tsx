@@ -8,6 +8,7 @@ import RibbonReview, { ReviewProps } from './RibbonReview';
 import RibbonView, { ViewProps } from './RibbonView';
 import RibbonTable, { RibbonTableProps } from './RibbonTable';
 import RibbonEquation, { RibbonEquationProps } from './RibbonEquation';
+import RibbonOutline, { RibbonOutlineProps } from './RibbonOutline';
 import {
   RibbonHelp,
   TabActions,
@@ -25,7 +26,11 @@ export const TABS = [
 ] as const;
 
 /** Контекстные вкладки появляются по месту курсора и в общий ряд не входят */
-export type RibbonTab = (typeof TABS)[number] | 'Таблица' | 'Формула';
+export type RibbonTab =
+  | (typeof TABS)[number]
+  | 'Таблица'
+  | 'Формула'
+  | 'Структура';
 
 interface Props
   extends RibbonHomeProps,
@@ -36,7 +41,8 @@ interface Props
     ReviewProps,
     ViewProps,
     RibbonTableProps,
-    RibbonEquationProps {
+    RibbonEquationProps,
+    RibbonOutlineProps {
   tab: RibbonTab;
   onTab: (t: RibbonTab) => void;
   onFileMenu: () => void;
@@ -44,6 +50,8 @@ interface Props
   inTable?: boolean;
   /** Курсор внутри формулы — показываем «Работа с формулами» */
   inEquation?: boolean;
+  /** Включён режим структуры — показываем её вкладку */
+  inOutline?: boolean;
 }
 
 const Ribbon = (p: Props) => {
@@ -116,6 +124,20 @@ const Ribbon = (p: Props) => {
           </button>
         )}
 
+        {p.inOutline && (
+          <button
+            type="button"
+            onClick={() => p.onTab('Структура')}
+            className={`h-[26px] rounded-t-[2px] px-3 text-[12px] transition-colors ${
+              p.tab === 'Структура'
+                ? 'bg-white text-[hsl(0_0%_15%)]'
+                : 'bg-[hsl(150_40%_35%)] text-white hover:bg-[hsl(150_40%_42%)]'
+            }`}
+          >
+            Структура
+          </button>
+        )}
+
         {p.inEquation && (
           <button
             type="button"
@@ -155,6 +177,7 @@ const Ribbon = (p: Props) => {
         {p.tab === 'Вид' && <RibbonView {...p} />}
         {p.tab === 'Таблица' && <RibbonTable {...p} />}
         {p.tab === 'Формула' && <RibbonEquation {...p} />}
+        {p.tab === 'Структура' && <RibbonOutline {...p} />}
         {p.tab === 'Справка' && <RibbonHelp {...actions} />}
       </div>
     </div>

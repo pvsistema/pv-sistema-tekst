@@ -39,6 +39,7 @@ import { useEquation } from '@/hooks/use-equation';
 import { useCharts } from '@/hooks/use-charts';
 import ChartDialog from '@/components/editor/ChartDialog';
 import PageSetupDialog from '@/components/editor/PageSetupDialog';
+import { useOutline } from '@/hooks/use-outline';
 import { useTemplates } from '@/hooks/use-templates';
 import SaveTemplateDialog from '@/components/editor/SaveTemplateDialog';
 import SymbolDialog from '@/components/editor/SymbolDialog';
@@ -292,6 +293,13 @@ const Editor = () => {
 
   const [pageSetupOpen, setPageSetupOpen] = useState(false);
 
+  const outline = useOutline({
+    editorRef,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+    active: viewMode === 'outline',
+  });
+
   const templates = useTemplates({
     editorRef,
     notify: (title, description) => toast({ title, description }),
@@ -380,6 +388,11 @@ const Editor = () => {
   /* ── вкладка «Вид» ── */
   const applyViewMode = (m: ViewMode) => {
     setViewMode(m);
+
+    /* в структуре сразу открываем её вкладку, при выходе — возвращаемся */
+    if (m === 'outline') setTab('Структура');
+    else if (tab === 'Структура') setTab('Главная');
+
     const names: Record<ViewMode, string> = {
       read: 'Режим чтения',
       print: 'Разметка страницы',
@@ -761,6 +774,14 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
       const start =
         node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element | null);
 
+      /* в структуре Tab понижает уровень, Shift+Tab повышает */
+      if (viewMode === 'outline') {
+        e.preventDefault();
+        if (e.shiftKey) outline.promote();
+        else outline.demote();
+        return;
+      }
+
       /* внутри формулы Tab ведёт к следующему полю ввода */
       if (start?.closest('.pv-equation')) {
         e.preventDefault();
@@ -804,7 +825,7 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
 
     el.addEventListener('keydown', onTab);
     return () => el.removeEventListener('keydown', onTab);
-  }, [exec, tables, tabs, autocorrect, equation]);
+  }, [exec, tables, tabs, autocorrect, equation, viewMode, outline]);
 
   /* ── горячие клавиши ── */
   useEffect(() => {
@@ -939,6 +960,20 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         setup={setup}
         onSetup={patchSetup}
         onPageSetup={() => setPageSetupOpen(true)}
+        inOutline={viewMode === 'outline'}
+        outlineLevel={outline.level}
+        outlineShow={outline.show}
+        onOutlineLevel={outline.setNodeLevel}
+        onOutlinePromote={outline.promote}
+        onOutlineDemote={outline.demote}
+        onOutlineToBody={outline.toBody}
+        onOutlineMove={outline.move}
+        onOutlineCollapse={outline.collapse}
+        onOutlineShow={outline.setShowLevel}
+        onOutlineClose={() => {
+          setViewMode('print');
+          setTab('Главная');
+        }}
         citeStyle={refs.citeStyle}
         onCiteStyle={refs.setCiteStyle}
         onToc={refs.buildToc}

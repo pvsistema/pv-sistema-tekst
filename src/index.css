@@ -587,19 +587,52 @@
     @apply text-[13px] text-[hsl(0_0%_45%)];
   }
 
+  /* у заголовка кружок, у обычного текста — маленький квадратик */
   .pv-page.pv-outline h1::before,
   .pv-page.pv-outline h2::before,
-  .pv-page.pv-outline h3::before {
+  .pv-page.pv-outline h3::before,
+  .pv-page.pv-outline h4::before,
+  .pv-page.pv-outline h5::before,
+  .pv-page.pv-outline h6::before {
     content: "⊕ ";
     @apply text-[hsl(0_0%_55%)];
   }
 
+  .pv-page.pv-outline p::before,
+  .pv-page.pv-outline li::before {
+    content: "▪ ";
+    @apply text-[hsl(0_0%_70%)];
+  }
+
+  /* каждый уровень сдвигается вправо — видна иерархия */
   .pv-page.pv-outline h2 {
     @apply pl-6;
   }
 
   .pv-page.pv-outline h3 {
     @apply pl-12;
+  }
+
+  .pv-page.pv-outline h4 {
+    @apply pl-[72px];
+  }
+
+  .pv-page.pv-outline h5 {
+    @apply pl-[96px];
+  }
+
+  .pv-page.pv-outline h6 {
+    @apply pl-[120px];
+  }
+
+  /* свёрнутый заголовок подчёркнут точками */
+  .pv-page.pv-outline .pv-outline-collapsed {
+    @apply border-b border-dotted border-[hsl(0_0%_65%)];
+  }
+
+  /* скрытые ветки видны только в режиме структуры */
+  .pv-page.pv-outline .pv-outline-hidden {
+    @apply hidden;
   }
 
   /* вкладка «Рецензирование» */

@@ -87,7 +87,12 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
           onScroll={onScroll}
           className={`flex-1 overflow-auto ${splitView ? 'border-b-4 border-[hsl(0_0%_65%)]' : ''}`}
           style={{
-            background: viewMode === 'web' ? pageColor : 'hsl(var(--win-canvas))',
+            background:
+              viewMode === 'web'
+                ? pageColor
+                : viewMode === 'outline' || viewMode === 'draft'
+                  ? '#fff'
+                  : 'hsl(var(--win-canvas))',
           }}
         >
           <div
@@ -96,13 +101,14 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
             suppressContentEditableWarning
             onInput={onInput}
             spellCheck
-            className={`pv-page mx-auto min-h-full outline-none ${
-              viewMode === 'outline' ? 'pv-outline' : ''
+            className={`pv-page min-h-full outline-none ${
+              viewMode === 'outline' ? 'pv-outline' : 'mx-auto'
             } ${viewMode === 'draft' ? 'bg-white' : ''}`}
             style={
               {
                 maxWidth: viewMode === 'web' ? 1100 : 900,
                 padding: pad,
+                paddingLeft: viewMode === 'outline' ? 28 : pad,
                 fontFamily:
                   viewMode === 'draft' ? 'Courier New, monospace' : theme.bodyFont,
                 color: theme.bodyColor,
