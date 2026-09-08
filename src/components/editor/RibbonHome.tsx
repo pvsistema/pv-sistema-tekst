@@ -57,6 +57,8 @@ export interface RibbonHomeProps {
   onRestartNumbering: (start: number) => void;
   onBorders: () => void;
   onShading: (color: string) => void;
+  /** Быстрая установка одной стороны границы */
+  onBorderSide?: (side: 'top' | 'right' | 'bottom' | 'left' | 'all' | 'none') => void;
   formatMarks?: boolean;
   onFormatPainter: () => void;
   hasSample?: boolean;
@@ -284,7 +286,29 @@ const RibbonHome = (p: RibbonHomeProps) => (
               className="h-0 w-0 opacity-0"
             />
           </label>
-          <SmallBtn icon="Grid2x2" title="Границы" onClick={p.onBorders} />
+          <Menu
+            icon="Grid2x2"
+            title="Границы абзаца"
+            width={220}
+            items={[
+              { label: 'Все границы', run: () => p.onBorderSide?.('all') },
+              { label: 'Нет границы', run: () => p.onBorderSide?.('none') },
+              {
+                label: 'Верхняя граница',
+                group: 'Отдельные стороны',
+                run: () => p.onBorderSide?.('top'),
+              },
+              { label: 'Нижняя граница', run: () => p.onBorderSide?.('bottom') },
+              { label: 'Левая граница', run: () => p.onBorderSide?.('left') },
+              { label: 'Правая граница', run: () => p.onBorderSide?.('right') },
+              {
+                label: 'Границы и заливка…',
+                group: 'Настройка',
+                hint: 'Тип линии, цвет, рамка страницы',
+                run: p.onBorders,
+              },
+            ]}
+          />
         </Row>
       </VStack>
     </RibbonGroup>

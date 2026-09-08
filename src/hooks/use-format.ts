@@ -246,63 +246,6 @@ export const useFormat = ({ editorRef, exec, recount, notify }: Options) => {
     [recount, notify],
   );
 
-  /* ── границы и заливка абзаца ── */
-
-  const setShading = useCallback(
-    (color: string) => {
-      const list = selectedParagraphs(root());
-      if (!list.length) {
-        notify('Установите курсор в абзац');
-        return;
-      }
-      list.forEach((el) => {
-        el.style.backgroundColor = color;
-        el.style.padding = el.style.padding || '4px 6px';
-      });
-      recount();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },
-    [recount, notify],
-  );
-
-  /** Границы абзаца: со всех сторон, по одной или снять */
-  const setBorder = useCallback(
-    (
-      side: 'all' | 'top' | 'bottom' | 'left' | 'right' | 'none' | 'outside',
-      style = '1px solid #808080',
-    ) => {
-      const list = selectedParagraphs(root());
-      if (!list.length) {
-        notify('Установите курсор в абзац');
-        return;
-      }
-
-      list.forEach((el) => {
-        el.style.border = '';
-        el.style.borderTop = '';
-        el.style.borderBottom = '';
-        el.style.borderLeft = '';
-        el.style.borderRight = '';
-
-        if (side === 'none') {
-          el.style.padding = '';
-          return;
-        }
-
-        el.style.padding = el.style.padding || '4px 6px';
-        if (side === 'all' || side === 'outside') el.style.border = style;
-        if (side === 'top') el.style.borderTop = style;
-        if (side === 'bottom') el.style.borderBottom = style;
-        if (side === 'left') el.style.borderLeft = style;
-        if (side === 'right') el.style.borderRight = style;
-      });
-
-      recount();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },
-    [recount, notify],
-  );
-
   /** Формат по образцу: запоминает оформление и переносит на другой текст */
   const [sample, setSample] = useState<CharFormat | null>(null);
 
@@ -349,8 +292,6 @@ export const useFormat = ({ editorRef, exec, recount, notify }: Options) => {
     restartNumbering,
     multilevel,
     sortList,
-    setShading,
-    setBorder,
     copyFormat,
     pasteFormat,
     hasSample: !!sample,

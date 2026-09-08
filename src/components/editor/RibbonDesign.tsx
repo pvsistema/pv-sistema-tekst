@@ -60,6 +60,8 @@ export interface DesignProps extends TabActions {
   pageColor: string;
   onPageColor: (v: string) => void;
   pageBorder: boolean;
+  /** Открыть окно «Границы и заливка» на вкладке «Страница» */
+  onPageBorderDialog?: () => void;
   onPageBorder: (v: boolean) => void;
 }
 
@@ -239,7 +241,7 @@ const RibbonDesign = (p: DesignProps) => (
         icon="Square"
         lines={['Границы', 'страниц']}
         width={60}
-        onClick={() => p.onPageBorder(!p.pageBorder)}
+        onClick={() => p.onPageBorderDialog?.()}
       />
     </RibbonGroup>
   </>

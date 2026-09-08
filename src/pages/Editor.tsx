@@ -22,6 +22,8 @@ import { useFormat } from '@/hooks/use-format';
 import { useTables } from '@/hooks/use-tables';
 import { useTabs } from '@/hooks/use-tabs';
 import { useBreaks } from '@/hooks/use-breaks';
+import { useBorders } from '@/hooks/use-borders';
+import BordersDialog from '@/components/editor/BordersDialog';
 import TabsDialog from '@/components/editor/TabsDialog';
 import TableDialog from '@/components/editor/TableDialog';
 import StyleDialog from '@/components/editor/StyleDialog';
@@ -260,6 +262,12 @@ const Editor = () => {
     notify: (title, description) => toast({ title, description }),
   });
 
+  const borders = useBorders({
+    editorRef,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+  });
+
   const breaks = useBreaks({
     editorRef,
     exec,
@@ -469,9 +477,16 @@ const Editor = () => {
       .filter(Boolean)
       .join(' ');
 
+    const pb = borders.pageBorder;
+    const frame =
+      pb.enabled && !pb.art
+        ? `body::before{content:"";position:fixed;inset:${pb.margin}pt;border:${pb.width}pt ${pb.style} ${pb.color};pointer-events:none}`
+        : '';
+
     const page = `@page { size: A4; margin: ${setup.margin}cm; ${marks} }`;
 
     return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title><style>${page}
+${frame}
 body{font-family:Calibri,Arial,sans-serif;line-height:1.5;margin:0}
 table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6px}
 h1,h2,h3{page-break-after:avoid}
@@ -498,6 +513,7 @@ h1,h2,h3{page-break-after:avoid}
       numberTop: furniture.numberPosition.startsWith('top'),
       numberAlign: (furniture.numberPosition.split('-')[1] ??
         'center') as 'left' | 'center' | 'right',
+      pageBorder: borders.pageBorder,
     });
     const blob = new Blob([bytes.slice().buffer], {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -743,8 +759,9 @@ h1,h2,h3{page-break-after:avoid}
         onBullet={fmt.setBullet}
         onNumberFormat={fmt.setNumberFormat}
         onRestartNumbering={fmt.restartNumbering}
-        onBorders={() => fmt.setBorder('all')}
-        onShading={fmt.setShading}
+        onBorders={borders.open}
+        onBorderSide={borders.quickSide}
+        onShading={borders.shade}
         onInsertTable={insertTable}
         onInsertImage={insertImage}
         onPrint={handlePrint}
@@ -761,6 +778,7 @@ h1,h2,h3{page-break-after:avoid}
         onPageColor={setPageColor}
         pageBorder={pageBorder}
         onPageBorder={setPageBorder}
+        onPageBorderDialog={borders.openPage}
         setup={setup}
         onSetup={patchSetup}
         citeStyle={refs.citeStyle}
@@ -873,6 +891,7 @@ h1,h2,h3{page-break-after:avoid}
           watermark={watermark}
           pageColor={pageColor}
           pageBorder={pageBorder}
+          pageBorderSetup={borders.pageBorder}
           viewMode={viewMode}
           showGrid={showGrid}
           pageFlow={pageFlow}
@@ -950,6 +969,16 @@ h1,h2,h3{page-break-after:avoid}
           setFileMenu(false);
           setOptionsOpen(true);
         }}
+      />
+
+      <BordersDialog
+        open={borders.dialogOpen}
+        initial={borders.initial}
+        pageInitial={borders.pageBorder}
+        onClose={() => borders.setDialogOpen(false)}
+        onApply={borders.apply}
+        onApplyPage={borders.applyPage}
+        startOnPage={borders.pageTab}
       />
 
       <HeaderFooterDialog

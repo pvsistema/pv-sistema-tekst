@@ -198,12 +198,56 @@ const tabsOf = (el: Element): string => {
   }
 };
 
+/** Обрамление и заливка абзаца в терминах Word */
+const bordersOf = (el: Element): string => {
+  const style = (el as HTMLElement).style;
+  if (!style) return '';
+
+  const WORD_STYLE: Record<string, string> = {
+    solid: 'single',
+    double: 'double',
+    dashed: 'dashed',
+    dotted: 'dotted',
+    groove: 'thinThickSmallGap',
+    ridge: 'thickThinSmallGap',
+  };
+
+  const side = (name: 'Top' | 'Right' | 'Bottom' | 'Left') => {
+    const raw = style[`border${name}` as 'borderTop'];
+    if (!raw || raw === 'none' || raw.startsWith('0')) return '';
+
+    /* строка вида «2px double rgb(47, 84, 150)» */
+    const width = parseFloat(raw) || 1;
+    const kind = WORD_STYLE[raw.split(' ')[1]] ?? 'single';
+
+    const colorPart = raw.match(/(rgba?\([^)]*\)|#[0-9a-f]{3,6}|[a-z]+)\s*$/i);
+    const color = (colorPart && toHex(colorPart[1])) || '000000';
+
+    /* ширина в восьмых долях пункта */
+    const sz = Math.max(2, Math.round(width * 8));
+
+    return `<w:${name.toLowerCase()} w:val="${kind}" w:sz="${sz}" w:space="2" w:color="${color}"/>`;
+  };
+
+  const lines = [side('Top'), side('Left'), side('Bottom'), side('Right')]
+    .filter(Boolean)
+    .join('');
+
+  const fillRaw = style.backgroundColor;
+  const fill = fillRaw ? toHex(fillRaw) : undefined;
+
+  const shd = fill ? `<w:shd w:val="clear" w:fill="${fill}"/>` : '';
+
+  return (lines ? `<w:pBdr>${lines}</w:pBdr>` : '') + shd;
+};
+
 const pPr = (opts: {
   style?: string;
   align?: string;
   numId?: number;
   level?: number;
   tabs?: string;
+  borders?: string;
 }): string => {
   const p: string[] = [];
   if (opts.style) p.push(`<w:pStyle w:val="${opts.style}"/>`);
@@ -212,6 +256,7 @@ const pPr = (opts: {
       `<w:numPr><w:ilvl w:val="${opts.level ?? 0}"/><w:numId w:val="${opts.numId}"/></w:numPr>`,
     );
   if (opts.tabs) p.push(opts.tabs);
+  if (opts.borders) p.push(opts.borders);
   if (opts.align) p.push(`<w:jc w:val="${opts.align}"/>`);
   return p.length ? `<w:pPr>${p.join('')}</w:pPr>` : '';
 };
@@ -333,7 +378,12 @@ const bodyFromHtml = (root: Element): string => {
     }
 
     out.push(
-      `<w:p>${pPr({ style, align: alignOf(el), tabs: tabsOf(el) })}${runs}</w:p>`,
+      `<w:p>${pPr({
+        style,
+        align: alignOf(el),
+        tabs: tabsOf(el),
+        borders: bordersOf(el),
+      })}${runs}</w:p>`,
     );
   };
 
@@ -521,6 +571,14 @@ export interface DocxFurniture {
   /** Номер стоит в верхнем поле */
   numberTop: boolean;
   numberAlign: 'left' | 'center' | 'right';
+  /** Рамка вокруг страницы */
+  pageBorder?: {
+    enabled: boolean;
+    style: string;
+    color: string;
+    width: number;
+    margin: number;
+  };
 }
 
 /**
@@ -609,6 +667,33 @@ export const htmlToDocx = (
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <w:body>${bodyFromHtml(holder)}` +
     `<w:sectPr>` +
+    (() => {
+      const pb = f?.pageBorder;
+      if (!pb?.enabled) return '';
+
+      const WORD_STYLE: Record<string, string> = {
+        solid: 'single',
+        double: 'double',
+        dashed: 'dashed',
+        dotted: 'dotted',
+        groove: 'thinThickSmallGap',
+        ridge: 'thickThinSmallGap',
+      };
+
+      const kind = WORD_STYLE[pb.style] ?? 'single';
+      const sz = Math.max(2, Math.round(pb.width * 8));
+      const color = toHex(pb.color) ?? '000000';
+      const space = Math.min(31, Math.round(pb.margin));
+
+      const line = (name: string) =>
+        `<w:${name} w:val="${kind}" w:sz="${sz}" w:space="${space}" w:color="${color}"/>`;
+
+      return (
+        '<w:pgBorders w:offsetFrom="page">' +
+        ['top', 'left', 'bottom', 'right'].map(line).join('') +
+        '</w:pgBorders>'
+      );
+    })() +
     (hasHeader ? '<w:headerReference w:type="default" r:id="rIdHdr"/>' : '') +
     (hasFooter ? '<w:footerReference w:type="default" r:id="rIdFtr"/>' : '') +
     `<w:pgSz w:w="11906" w:h="16838"/>` +

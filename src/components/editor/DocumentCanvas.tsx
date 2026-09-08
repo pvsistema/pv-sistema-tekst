@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import type { DocTheme } from './RibbonDesign';
 import type { PageSetup } from './RibbonLayout';
 import type { PageFurniture } from '@/lib/page-numbers';
+import type { PageBorderSetup } from '@/lib/borders';
 import PageFurnitureLayer from './PageFurnitureLayer';
 
 interface Props {
@@ -23,6 +24,8 @@ interface Props {
   furniture?: PageFurniture;
   docTitle?: string;
   onEditFurniture?: (part: 'header' | 'footer') => void;
+  /** Настраиваемое обрамление страницы */
+  pageBorderSetup?: PageBorderSetup;
 }
 
 /** Лист A4 при 96 dpi */
@@ -52,6 +55,7 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
       furniture,
       docTitle = '',
       onEditFurniture,
+      pageBorderSetup,
     },
     ref,
   ) => {
@@ -145,6 +149,38 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
                 </div>
               )}
 
+              {pageBorderSetup?.enabled && pageBorderSetup.art && (
+                <div
+                  className="pointer-events-none absolute z-[16] overflow-hidden text-[13px] leading-none"
+                  style={{
+                    inset: pageBorderSetup.margin,
+                    color: pageBorderSetup.color,
+                  }}
+                >
+                  {/* рамка из повторяющегося рисунка по четырём сторонам */}
+                  <div className="absolute inset-x-0 top-0 flex justify-between">
+                    {Array.from({ length: 34 }, (_, i) => (
+                      <span key={i}>{pageBorderSetup.art}</span>
+                    ))}
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 flex justify-between">
+                    {Array.from({ length: 34 }, (_, i) => (
+                      <span key={i}>{pageBorderSetup.art}</span>
+                    ))}
+                  </div>
+                  <div className="absolute inset-y-0 left-0 flex flex-col justify-between">
+                    {Array.from({ length: 46 }, (_, i) => (
+                      <span key={i}>{pageBorderSetup.art}</span>
+                    ))}
+                  </div>
+                  <div className="absolute inset-y-0 right-0 flex flex-col justify-between">
+                    {Array.from({ length: 46 }, (_, i) => (
+                      <span key={i}>{pageBorderSetup.art}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {furniture && onEditFurniture && (
                 <PageFurnitureLayer
                   furniture={furniture}
@@ -184,7 +220,12 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
                     lineHeight: 1.5,
                     columnCount: setup.columns,
                     columnGap: 32,
-                    border: pageBorder ? '2px solid #2f5496' : undefined,
+                    border:
+                      pageBorderSetup?.enabled && !pageBorderSetup.art
+                        ? `${pageBorderSetup.width}px ${pageBorderSetup.style} ${pageBorderSetup.color}`
+                        : pageBorder
+                          ? '2px solid #2f5496'
+                          : undefined,
                     hyphens: setup.hyphenation ? 'auto' : 'manual',
                     '--pv-h-font': theme.headingFont,
                     '--pv-h-color': theme.headingColor,
