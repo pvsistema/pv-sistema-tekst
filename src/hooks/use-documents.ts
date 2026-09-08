@@ -9,56 +9,47 @@ export interface PvDocument {
 
 const STORAGE_KEY = 'pv-tekst-documents';
 
-const DEFAULT_DOC_HTML = `<h1>О переходе отдела на электронный документооборот</h1>
-<p>Прошу согласовать перевод входящей корреспонденции отдела в электронный вид с 1 октября. Шаблоны приказов, актов и служебных записок уже собраны, нумерация страниц и колонтитулы настроены по требованиям делопроизводства.</p>
-<p>Печатная копия сохраняет разметку: то, что видно на экране, ложится на лист без сдвигов. Ниже — перечень документов, которые переводятся в электронный вид в первую очередь.</p>
-<ul><li>Служебные записки и заявления сотрудников</li><li>Приказы по основной деятельности</li><li>Акты приёма-передачи и накладные</li></ul>
-<p>Ответственный за перевод — начальник канцелярии. Срок подготовки шаблонов — до 25 сентября.</p>`;
+/** Пустой документ — с него начинается работа при запуске программы */
+export const BLANK_HTML = '<p><br></p>';
 
-const createDefaults = (): PvDocument[] => {
-  const now = Date.now();
-  return [
-    {
-      id: 'doc-1',
-      title: 'Служебная записка',
-      html: DEFAULT_DOC_HTML,
-      updatedAt: now,
-    },
-    {
-      id: 'doc-2',
-      title: 'Приказ № 142-ОД',
-      html: '<h1>Приказ № 142-ОД</h1><p>Об утверждении графика отпусков на следующий календарный год.</p>',
-      updatedAt: now - 3600_000,
-    },
-    {
-      id: 'doc-3',
-      title: 'Курсовая работа',
-      html: '<h1>Введение</h1><p>Актуальность темы обусловлена растущим объёмом электронного документооборота в бюджетных организациях.</p>',
-      updatedAt: now - 86_400_000,
-    },
-  ];
-};
+const blank = (): PvDocument => ({
+  id: `doc-${Date.now()}`,
+  title: 'Новый документ',
+  html: BLANK_HTML,
+  updatedAt: Date.now(),
+});
+
+/** Документ, в котором пользователь ничего не написал */
+const isBlank = (d: PvDocument) =>
+  !d.html.replace(/<[^>]*>/g, '').replace(/&nbsp;|\s/g, '');
 
 const load = (): PvDocument[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as PvDocument[];
-      if (Array.isArray(parsed) && parsed.length) return parsed;
+      if (Array.isArray(parsed)) return parsed.filter((d) => d?.id && !isBlank(d));
     }
   } catch {
-    /* storage недоступен — работаем в памяти */
+    /* хранилище недоступно — работаем в памяти */
   }
-  return createDefaults();
+  return [];
 };
 
+/**
+ * Список документов. При запуске программы всегда открыт чистый лист,
+ * а прежние документы остаются доступны в списке недавних.
+ */
 export const useDocuments = () => {
-  const [documents, setDocuments] = useState<PvDocument[]>(load);
-  const [activeId, setActiveId] = useState<string>(() => load()[0].id);
+  const [initial] = useState<PvDocument[]>(() => [blank(), ...load()]);
+  const [documents, setDocuments] = useState<PvDocument[]>(initial);
+  const [activeId, setActiveId] = useState<string>(initial[0].id);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(documents));
+      /* пустые черновики не засоряют список недавних */
+      const keep = documents.filter((d) => !isBlank(d)).slice(0, 50);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(keep));
     } catch {
       /* пропускаем */
     }
@@ -68,12 +59,7 @@ export const useDocuments = () => {
     documents.find((d) => d.id === activeId) ?? documents[0] ?? null;
 
   const createDocument = useCallback(() => {
-    const doc: PvDocument = {
-      id: `doc-${Date.now()}`,
-      title: 'Новый документ',
-      html: '<h1>Заголовок документа</h1><p>Начните вводить текст…</p>',
-      updatedAt: Date.now(),
-    };
+    const doc = blank();
     setDocuments((prev) => [doc, ...prev]);
     setActiveId(doc.id);
     return doc;
@@ -94,7 +80,12 @@ export const useDocuments = () => {
     (id: string) => {
       setDocuments((prev) => {
         const next = prev.filter((d) => d.id !== id);
-        if (!next.length) return createDefaults();
+        /* удалили последний — оставляем чистый лист */
+        if (!next.length) {
+          const fresh = blank();
+          setActiveId(fresh.id);
+          return [fresh];
+        }
         if (id === activeId) setActiveId(next[0].id);
         return next;
       });

@@ -80,6 +80,13 @@ public sealed class MainForm : Form
         core.Settings.IsStatusBarEnabled = false;
         core.Settings.IsSwipeNavigationEnabled = false;
         core.Settings.AreDevToolsEnabled = false;
+
+        /* брошенный в окно файл не должен уводить со страницы редактора */
+        core.NavigationStarting += (_, e) =>
+        {
+            if (!e.Uri.StartsWith($"https://{VirtualHost}", StringComparison.OrdinalIgnoreCase))
+                e.Cancel = true;
+        };
         core.Settings.IsZoomControlEnabled = false;
 
         /* печать и внешние ссылки открываем сами, новое окно не создаём */

@@ -1,5 +1,7 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { docxToHtml, isZip, rtfToHtml } from '@/lib/docx-reader';
+
+const SUPPORTED = /\.(docx?|html?|txt|rtf|md)$/i;
 
 export interface IncomingFile {
   name: string;
@@ -109,6 +111,8 @@ export const useFileOpen = (
   onOpen: (file: IncomingFile) => void,
   onError?: (message: string) => void,
 ) => {
+  const [dragging, setDragging] = useState(false);
+
   const handleBytes = useCallback(
     (name: string, bytes: Uint8Array) => {
       try {
@@ -167,5 +171,73 @@ export const useFileOpen = (
     input.click();
   }, [handleBytes, onError]);
 
-  return { pickFile };
+  /** Читает выбранный файл и передаёт его в редактор */
+  const openFile = useCallback(
+    (file: File) => {
+      if (!SUPPORTED.test(file.name)) {
+        onError?.(
+          'Такой формат не поддерживается. Подойдут .docx, .rtf, .txt или .html',
+        );
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () =>
+        handleBytes(file.name, new Uint8Array(reader.result as ArrayBuffer));
+      reader.onerror = () => onError?.('Не удалось прочитать файл');
+      reader.readAsArrayBuffer(file);
+    },
+    [handleBytes, onError],
+  );
+
+  /* перетаскивание файла в окно программы */
+  useEffect(() => {
+    let depth = 0;
+
+    const hasFiles = (e: DragEvent) =>
+      Array.from(e.dataTransfer?.types ?? []).includes('Files');
+
+    const onEnter = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth += 1;
+      setDragging(true);
+    };
+
+    const onOver = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    };
+
+    const onLeave = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth = Math.max(0, depth - 1);
+      if (!depth) setDragging(false);
+    };
+
+    const onDrop = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      setDragging(false);
+
+      const file = e.dataTransfer?.files?.[0];
+      if (file) openFile(file);
+    };
+
+    window.addEventListener('dragenter', onEnter);
+    window.addEventListener('dragover', onOver);
+    window.addEventListener('dragleave', onLeave);
+    window.addEventListener('drop', onDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', onEnter);
+      window.removeEventListener('dragover', onOver);
+      window.removeEventListener('dragleave', onLeave);
+      window.removeEventListener('drop', onDrop);
+    };
+  }, [openFile]);
+
+  return { pickFile, dragging };
 };

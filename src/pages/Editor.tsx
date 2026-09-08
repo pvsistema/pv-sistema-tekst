@@ -14,6 +14,7 @@ import { DEFAULT_SETUP, PageSetup } from '@/components/editor/RibbonLayout';
 import FindReplaceDialog from '@/components/editor/FindReplaceDialog';
 import StatusBar from '@/components/editor/StatusBar';
 import FileMenu from '@/components/editor/FileMenu';
+import DropOverlay from '@/components/editor/DropOverlay';
 import type { DocTemplate } from '@/components/editor/fileTemplates';
 import { htmlToDocx } from '@/lib/docx-writer';
 import { useReferences } from '@/hooks/use-references';
@@ -66,14 +67,19 @@ const Editor = () => {
   const [pageColor, setPageColor] = useState('#ffffff');
   const [pageBorder, setPageBorder] = useState(false);
 
-  /* открытие файлов: двойной клик в Проводнике и кнопка «Открыть» */
-  const { pickFile } = useFileOpen(
+  /* открытие файлов: Проводник, кнопка «Открыть» и перетаскивание */
+  const { pickFile, dragging } = useFileOpen(
     useCallback(
       (file) => {
         importDocument(titleFromFileName(file.name), file.html);
         toast({ title: 'Документ открыт', description: file.name });
       },
       [importDocument],
+    ),
+    useCallback(
+      (message: string) =>
+        toast({ title: 'Не удалось открыть файл', description: message }),
+      [],
     ),
   );
 
@@ -105,7 +111,13 @@ const Editor = () => {
     const text = el.innerText.replace(/\u00a0/g, ' ');
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     const chars = text.replace(/\n/g, '').length;
-    const pages = Math.max(1, Math.ceil(el.scrollHeight / contentHeight));
+    /* высоту берём по последнему абзацу: сам лист всегда растянут на страницу */
+    const last = el.lastElementChild as HTMLElement | null;
+    const filled = last
+      ? last.offsetTop - el.offsetTop + last.offsetHeight
+      : el.scrollHeight;
+
+    const pages = Math.max(1, Math.ceil((filled - 2) / contentHeight));
     setStats({ words, chars, pages });
   }, [contentHeight]);
 
@@ -448,6 +460,7 @@ const Editor = () => {
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-white font-body">
+      <DropOverlay visible={dragging} />
       <WindowTitleBar
         title={active?.title ?? ''}
         onSave={handleSave}
