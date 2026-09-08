@@ -8,6 +8,8 @@ export interface TabActions {
   onNew: () => void;
   onZoom: (v: number) => void;
   zoom: number;
+  /** Открыть окно колонтитулов */
+  onHeaderFooter?: (part: 'header' | 'footer') => void;
 }
 
 export const RibbonHelp = (p: TabActions) => (

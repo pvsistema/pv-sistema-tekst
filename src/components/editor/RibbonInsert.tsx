@@ -126,18 +126,9 @@ const RibbonInsert = (p: TabActions) => {
 
   const insertDropCap = () => p.onCommand('formatBlock', 'h1');
 
-  const insertHeader = () =>
-    html(
-      '<div style="border-bottom:1px solid #bfbfbf;color:#595959;font-size:12px;padding-bottom:4px;margin-bottom:12px">Верхний колонтитул</div>',
-    );
-
-  const insertFooter = () =>
-    html(
-      '<div style="border-top:1px solid #bfbfbf;color:#595959;font-size:12px;padding-top:4px;margin-top:12px">Нижний колонтитул</div>',
-    );
-
-  const insertPageNumber = () =>
-    html('<p style="text-align:center;color:#595959;font-size:12px">— 1 —</p>');
+  const insertHeader = () => p.onHeaderFooter?.('header');
+  const insertFooter = () => p.onHeaderFooter?.('footer');
+  const insertPageNumber = () => p.onHeaderFooter?.('footer');
 
   const insertComment = () =>
     html('<span style="background:#fff2cc;border-bottom:1px dashed #bf9000">примечание</span>');

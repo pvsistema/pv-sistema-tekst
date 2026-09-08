@@ -1,6 +1,8 @@
 import { forwardRef } from 'react';
 import type { DocTheme } from './RibbonDesign';
 import type { PageSetup } from './RibbonLayout';
+import type { PageFurniture } from '@/lib/page-numbers';
+import PageFurnitureLayer from './PageFurnitureLayer';
 
 interface Props {
   zoom: number;
@@ -17,6 +19,10 @@ interface Props {
   showGrid?: boolean;
   pageFlow?: 'vertical' | 'horizontal';
   splitView?: boolean;
+  /** Колонтитулы и номера страниц */
+  furniture?: PageFurniture;
+  docTitle?: string;
+  onEditFurniture?: (part: 'header' | 'footer') => void;
 }
 
 /** Лист A4 при 96 dpi */
@@ -43,6 +49,9 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
       showGrid = false,
       pageFlow = 'vertical',
       splitView = false,
+      furniture,
+      docTitle = '',
+      onEditFurniture,
     },
     ref,
   ) => {
@@ -134,6 +143,18 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
                     {watermark}
                   </span>
                 </div>
+              )}
+
+              {furniture && onEditFurniture && (
+                <PageFurnitureLayer
+                  furniture={furniture}
+                  pages={pages}
+                  pageHeight={height}
+                  padding={pad}
+                  contentHeight={contentHeight}
+                  docTitle={docTitle}
+                  onEdit={onEditFurniture}
+                />
               )}
 
               {Array.from({ length: Math.max(0, pages - 1) }, (_, i) => (

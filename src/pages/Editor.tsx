@@ -23,6 +23,8 @@ import { useTables } from '@/hooks/use-tables';
 import TableDialog from '@/components/editor/TableDialog';
 import StyleDialog from '@/components/editor/StyleDialog';
 import StylesPane from '@/components/editor/StylesPane';
+import HeaderFooterDialog from '@/components/editor/HeaderFooterDialog';
+import { DEFAULT_FURNITURE, type PageFurniture } from '@/lib/page-numbers';
 import { useStyles } from '@/hooks/use-styles';
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
 import type { DocTemplate } from '@/components/editor/fileTemplates';
@@ -69,6 +71,11 @@ const Editor = () => {
   const [fontFamily, setFontFamily] = useState('Calibri (Основной)');
   const [fontSize, setFontSize] = useState('11');
   const [stats, setStats] = useState({ words: 0, chars: 0, pages: 1 });
+  /* колонтитулы и номера страниц */
+  const [furniture, setFurniture] = useState<PageFurniture>(DEFAULT_FURNITURE);
+  const [furnitureOpen, setFurnitureOpen] = useState(false);
+  const [furniturePart, setFurniturePart] = useState<'header' | 'footer'>('header');
+
   /* работа с таблицами */
   const [showMarks, setShowMarks] = useState(false);
 
@@ -136,6 +143,9 @@ const Editor = () => {
   useEffect(() => {
     if (editorRef.current && active) {
       editorRef.current.innerHTML = active.html;
+      setFurniture(
+        (active.furniture as PageFurniture | undefined) ?? DEFAULT_FURNITURE,
+      );
       recount();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -143,9 +153,12 @@ const Editor = () => {
 
   const persist = useCallback(() => {
     if (!editorRef.current || !active) return;
-    updateDocument(active.id, { html: editorRef.current.innerHTML });
+    updateDocument(active.id, {
+      html: editorRef.current.innerHTML,
+      furniture,
+    });
     setSavedAt(Date.now());
-  }, [active, updateDocument]);
+  }, [active, updateDocument, furniture]);
 
   /* защита от потери несохранённых правок */
   const guardApi = useUnsavedGuard({
@@ -226,6 +239,11 @@ const Editor = () => {
     recount,
     notify: (title, description) => toast({ title, description }),
   });
+
+  const openFurniture = useCallback((part: 'header' | 'footer') => {
+    setFurniturePart(part);
+    setFurnitureOpen(true);
+  }, []);
 
   const docStyles = useStyles({
     editorRef,
@@ -388,9 +406,49 @@ const Editor = () => {
 
   const buildFullHtml = () => {
     const body = editorRef.current?.innerHTML ?? '';
-    return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${
-      active?.title ?? 'Документ'
-    }</title><style>body{font-family:Calibri,Arial,sans-serif;max-width:21cm;margin:2cm auto;line-height:1.5}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6px}</style></head><body>${body}</body></html>`;
+    const title = active?.title ?? 'Документ';
+    const f = furniture;
+
+    /* колонтитулы повторяются на каждом листе средствами печати */
+    const field = (text: string) =>
+      text
+        .replace(/\{СТРАНИЦА\}/gi, '" counter(page) "')
+        .replace(/\{ВСЕГО\}/gi, '" counter(pages) "')
+        .replace(/\{ИМЯ\}/gi, title)
+        .replace(/\{ДАТА\}/gi, new Date().toLocaleDateString('ru-RU'));
+
+    const numberText =
+      f.numberPosition === 'none' ? '' : '" counter(page) "';
+
+    const isTop = f.numberPosition.startsWith('top');
+    const side = f.numberPosition.split('-')[1] ?? 'center';
+
+    const slot = (position: 'top' | 'bottom', where: string) => {
+      const own = position === 'top' ? f.headerText : f.footerText;
+      const align = position === 'top' ? f.headerAlign : f.footerAlign;
+
+      const parts: string[] = [];
+      if (own && align === where) parts.push(field(own));
+      if (numberText && (isTop ? 'top' : 'bottom') === position && side === where)
+        parts.push(numberText);
+
+      if (!parts.length) return '';
+      return `@${position}-${where} { content: "${parts.join(' ')}"; font-size: 10pt; color: #444 }`;
+    };
+
+    const marks = ['left', 'center', 'right']
+      .flatMap((w) => [slot('top', w), slot('bottom', w)])
+      .filter(Boolean)
+      .join(' ');
+
+    const page = `@page { size: A4; margin: ${setup.margin}cm; ${marks} }`;
+
+    return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title><style>${page}
+body{font-family:Calibri,Arial,sans-serif;line-height:1.5;margin:0}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6px}
+h1,h2,h3{page-break-after:avoid}
+.pv-page-break{page-break-before:always}
+</style></head><body>${body}</body></html>`;
   };
 
   const handleExportHtml = () => {
@@ -402,7 +460,17 @@ const Editor = () => {
     const body = editorRef.current?.innerHTML ?? active?.html ?? '';
     const title = active?.title ?? 'document';
 
-    const bytes = htmlToDocx(body, title);
+    const bytes = htmlToDocx(body, title, {
+      headerText: furniture.headerText,
+      footerText: furniture.footerText,
+      headerAlign: furniture.headerAlign,
+      footerAlign: furniture.footerAlign,
+      differentFirst: furniture.differentFirst,
+      numberPosition: furniture.numberPosition,
+      numberTop: furniture.numberPosition.startsWith('top'),
+      numberAlign: (furniture.numberPosition.split('-')[1] ??
+        'center') as 'left' | 'center' | 'right',
+    });
     const blob = new Blob([bytes.slice().buffer], {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
@@ -621,6 +689,7 @@ const Editor = () => {
         onStyle={tables.style}
         onSort={tables.sort}
         onSum={tables.sum}
+        onHeaderFooter={openFurniture}
         styles={docStyles.styles}
         activeStyle={docStyles.activeId}
         onStyleApply={docStyles.apply}
@@ -772,11 +841,14 @@ const Editor = () => {
           showGrid={showGrid}
           pageFlow={pageFlow}
           splitView={splitView}
+          furniture={furniture}
+          docTitle={active?.title ?? ''}
+          onEditFurniture={openFurniture}
         />
 
         <StylesPane
           open={docStyles.paneOpen}
-          styles={docStyles.styles}
+        styles={docStyles.styles}
           activeId={docStyles.activeId}
           onClose={() => docStyles.setPaneOpen(false)}
           onApply={docStyles.apply}
@@ -839,6 +911,18 @@ const Editor = () => {
         onOptions={() => {
           setFileMenu(false);
           setOptionsOpen(true);
+        }}
+      />
+
+      <HeaderFooterDialog
+        open={furnitureOpen}
+        initial={furniture}
+        part={furniturePart}
+        onClose={() => setFurnitureOpen(false)}
+        onApply={(f) => {
+          setFurniture(f);
+          setFurnitureOpen(false);
+          toast({ title: 'Колонтитулы обновлены' });
         }}
       />
 

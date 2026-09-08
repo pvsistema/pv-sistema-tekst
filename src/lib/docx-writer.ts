@@ -425,20 +425,111 @@ const NUMBERING = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:num w:numId="2"><w:abstractNumId w:val="2"/></w:num>
 </w:numbering>`;
 
+
+/** Настройки колонтитулов для файла Word */
+export interface DocxFurniture {
+  headerText: string;
+  footerText: string;
+  headerAlign: 'left' | 'center' | 'right';
+  footerAlign: 'left' | 'center' | 'right';
+  differentFirst: boolean;
+  numberPosition: string;
+  /** Номер стоит в верхнем поле */
+  numberTop: boolean;
+  numberAlign: 'left' | 'center' | 'right';
+}
+
+/**
+ * Часть документа с колонтитулом. Номер страницы вставляется полем PAGE —
+ * Word пересчитает его сам при печати.
+ */
+const furniturePart = (
+  kind: 'hdr' | 'ftr',
+  text: string,
+  align: 'left' | 'center' | 'right',
+  numbers: DocxFurniture | null,
+): string => {
+  const tag = kind === 'hdr' ? 'w:hdr' : 'w:ftr';
+
+  /* поля документа превращаем в настоящие поля Word */
+  const parts = text
+    .replace(/\{ИМЯ\}/gi, '')
+    .replace(/\{ДАТА\}/gi, new Date().toLocaleDateString('ru-RU'));
+
+  const runs: string[] = [];
+
+  const before = parts.split(/\{СТРАНИЦА\}/i)[0];
+  const after = parts.split(/\{СТРАНИЦА\}/i)[1] ?? '';
+  const hasPageField = /\{СТРАНИЦА\}/i.test(parts);
+
+  const pageField =
+    '<w:r><w:fldChar w:fldCharType="begin"/></w:r>' +
+    '<w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>' +
+    '<w:r><w:fldChar w:fldCharType="separate"/></w:r>' +
+    '<w:r><w:t>1</w:t></w:r>' +
+    '<w:r><w:fldChar w:fldCharType="end"/></w:r>';
+
+  const totalField =
+    '<w:r><w:fldChar w:fldCharType="begin"/></w:r>' +
+    '<w:r><w:instrText xml:space="preserve"> NUMPAGES </w:instrText></w:r>' +
+    '<w:r><w:fldChar w:fldCharType="separate"/></w:r>' +
+    '<w:r><w:t>1</w:t></w:r>' +
+    '<w:r><w:fldChar w:fldCharType="end"/></w:r>';
+
+  const plain = (v: string) =>
+    v ? `<w:r><w:t xml:space="preserve">${esc(v)}</w:t></w:r>` : '';
+
+  const withTotal = (v: string) => {
+    const [head, tail] = v.split(/\{ВСЕГО\}/i);
+    if (tail === undefined) return plain(v);
+    return plain(head) + totalField + plain(tail);
+  };
+
+  if (hasPageField) {
+    runs.push(withTotal(before), pageField, withTotal(after));
+  } else {
+    runs.push(withTotal(parts));
+  }
+
+  /* отдельный номер страницы, если он задан не текстом, а положением */
+  if (numbers && numbers.numberPosition !== 'none') {
+    if (runs.filter(Boolean).length) runs.push(plain('  '));
+    runs.push(pageField);
+  }
+
+  const justify = align === 'center' ? 'center' : align === 'right' ? 'right' : 'left';
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<${tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:p><w:pPr><w:jc w:val="${justify}"/></w:pPr>${runs.filter(Boolean).join('')}</w:p></${tag}>`;
+};
+
 /**
  * Собирает файл .docx из содержимого редактора.
  * Открывается в Word, LibreOffice и Google Документах без потери оформления.
  */
-export const htmlToDocx = (html: string, title: string): Uint8Array => {
+export const htmlToDocx = (
+  html: string,
+  title: string,
+  furniture?: DocxFurniture,
+): Uint8Array => {
   const holder = document.createElement('div');
   holder.innerHTML = html;
 
+  const f = furniture;
+  const hasHeader = !!f?.headerText || (!!f && f.numberTop);
+  const hasFooter = !!f?.footerText || (!!f && f.numberPosition !== 'none' && !f.numberTop);
+
   const document_xml =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <w:body>${bodyFromHtml(holder)}` +
-    `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>` +
+    `<w:sectPr>` +
+    (hasHeader ? '<w:headerReference w:type="default" r:id="rIdHdr"/>' : '') +
+    (hasFooter ? '<w:footerReference w:type="default" r:id="rIdFtr"/>' : '') +
+    `<w:pgSz w:w="11906" w:h="16838"/>` +
     `<w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1701" w:header="708" w:footer="708" w:gutter="0"/>` +
+    (f?.differentFirst ? '<w:titlePg/>' : '') +
     `</w:sectPr></w:body></w:document>`;
 
   const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
@@ -454,17 +545,50 @@ export const htmlToDocx = (html: string, title: string): Uint8Array => {
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
 <Application>ПВ-Система Текст</Application></Properties>`;
 
-  return zipSync(
-    {
-      '[Content_Types].xml': strToU8(CONTENT_TYPES),
-      '_rels/.rels': strToU8(ROOT_RELS),
-      'word/document.xml': strToU8(document_xml),
-      'word/styles.xml': strToU8(STYLES),
-      'word/numbering.xml': strToU8(NUMBERING),
-      'word/_rels/document.xml.rels': strToU8(DOC_RELS),
-      'docProps/core.xml': strToU8(core),
-      'docProps/app.xml': strToU8(app),
-    },
-    { level: 6 },
-  );
+  const files: Record<string, Uint8Array> = {
+    '[Content_Types].xml': strToU8(
+      CONTENT_TYPES.replace(
+        '</Types>',
+        (hasHeader
+          ? '<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>'
+          : '') +
+          (hasFooter
+            ? '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>'
+            : '') +
+          '</Types>',
+      ),
+    ),
+    '_rels/.rels': strToU8(ROOT_RELS),
+    'word/document.xml': strToU8(document_xml),
+    'word/styles.xml': strToU8(STYLES),
+    'word/numbering.xml': strToU8(NUMBERING),
+    'word/_rels/document.xml.rels': strToU8(
+      DOC_RELS.replace(
+        '</Relationships>',
+        (hasHeader
+          ? '<Relationship Id="rIdHdr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>'
+          : '') +
+          (hasFooter
+            ? '<Relationship Id="rIdFtr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>'
+            : '') +
+          '</Relationships>',
+      ),
+    ),
+    'docProps/core.xml': strToU8(core),
+    'docProps/app.xml': strToU8(app),
+  };
+
+  if (hasHeader && f) {
+    files['word/header1.xml'] = strToU8(
+      furniturePart('hdr', f.headerText, f.headerAlign, f.numberTop ? f : null),
+    );
+  }
+
+  if (hasFooter && f) {
+    files['word/footer1.xml'] = strToU8(
+      furniturePart('ftr', f.footerText, f.footerAlign, f.numberTop ? null : f),
+    );
+  }
+
+  return zipSync(files, { level: 6 });
 };

@@ -5,6 +5,8 @@ export interface PvDocument {
   title: string;
   html: string;
   updatedAt: number;
+  /** Колонтитулы и номера страниц документа */
+  furniture?: unknown;
 }
 
 const STORAGE_KEY = 'pv-tekst-documents';
