@@ -345,6 +345,11 @@
     content: "________________________________________________";
   }
 
+  /* ссылки, созданные автозаменой */
+  .pv-page .pv-link {
+    @apply text-[hsl(215_78%_43%)] underline underline-offset-2;
+  }
+
   /* разрывы страниц и разделов */
   .pv-page .pv-break {
     @apply relative my-0 select-none;

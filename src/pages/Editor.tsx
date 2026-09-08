@@ -23,6 +23,8 @@ import { useTables } from '@/hooks/use-tables';
 import { useTabs } from '@/hooks/use-tabs';
 import { useBreaks } from '@/hooks/use-breaks';
 import { useBorders } from '@/hooks/use-borders';
+import { useAutoCorrect } from '@/hooks/use-autocorrect';
+import AutoCorrectDialog from '@/components/editor/AutoCorrectDialog';
 import BordersDialog from '@/components/editor/BordersDialog';
 import TabsDialog from '@/components/editor/TabsDialog';
 import TableDialog from '@/components/editor/TableDialog';
@@ -259,6 +261,12 @@ const Editor = () => {
   const docStyles = useStyles({
     editorRef,
     recount,
+    notify: (title, description) => toast({ title, description }),
+  });
+
+  const autocorrect = useAutoCorrect({
+    editorRef,
+    exec,
     notify: (title, description) => toast({ title, description }),
   });
 
@@ -620,7 +628,11 @@ h1,h2,h3{page-break-after:avoid}
     if (!el) return;
 
     const onTab = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
+      /* автозамена разбирает обычный ввод раньше остальных правил */
+      if (e.key !== 'Tab') {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) autocorrect.handleKey(e);
+        return;
+      }
 
       const sel = window.getSelection();
       const node = sel?.anchorNode;
@@ -663,7 +675,7 @@ h1,h2,h3{page-break-after:avoid}
 
     el.addEventListener('keydown', onTab);
     return () => el.removeEventListener('keydown', onTab);
-  }, [exec, tables, tabs]);
+  }, [exec, tables, tabs, autocorrect]);
 
   /* ── горячие клавиши ── */
   useEffect(() => {
@@ -968,6 +980,17 @@ h1,h2,h3{page-break-after:avoid}
         onOptions={() => {
           setFileMenu(false);
           setOptionsOpen(true);
+        }}
+      />
+
+      <AutoCorrectDialog
+        open={autocorrect.dialogOpen}
+        initial={autocorrect.setup}
+        onClose={() => autocorrect.setDialogOpen(false)}
+        onApply={(s) => {
+          autocorrect.setSetup(s);
+          autocorrect.setDialogOpen(false);
+          toast({ title: 'Параметры автозамены сохранены' });
         }}
       />
 

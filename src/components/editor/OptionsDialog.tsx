@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import type { AppOptions } from '@/hooks/use-app-options';
 
@@ -8,6 +9,8 @@ interface Props {
   options: AppOptions;
   onApply: (o: AppOptions) => void;
   onReset: () => void;
+  /** Открыть окно «Автозамена» */
+  onAutoCorrect?: () => void;
 }
 
 const SECTIONS = [
@@ -412,6 +415,18 @@ const OptionsDialog = (p: Props) => {
                   checked={draft.autoQuotes}
                   onChange={(v) => set('autoQuotes', v)}
                 />
+                <div className="px-1 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={p.onAutoCorrect}
+                  >
+                    Параметры автозамены…
+                  </Button>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Список замен, тире, ссылки и автоматические списки
+                  </p>
+                </div>
               </>
             )}
 
