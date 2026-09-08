@@ -15,6 +15,7 @@ import FindReplaceDialog from '@/components/editor/FindReplaceDialog';
 import StatusBar from '@/components/editor/StatusBar';
 import FileMenu from '@/components/editor/FileMenu';
 import type { DocTemplate } from '@/components/editor/fileTemplates';
+import { htmlToDocx } from '@/lib/docx-writer';
 import { useReferences } from '@/hooks/use-references';
 import { useReview } from '@/hooks/use-review';
 import type { ViewMode } from '@/components/editor/RibbonView';
@@ -311,12 +312,25 @@ const Editor = () => {
   };
 
   const handleExportDoc = () => {
-    download(
-      buildFullHtml(),
-      `${active?.title ?? 'document'}.doc`,
-      'application/msword',
-    );
-    toast({ title: 'Файл DOC сохранён' });
+    const body = editorRef.current?.innerHTML ?? active?.html ?? '';
+    const title = active?.title ?? 'document';
+
+    const bytes = htmlToDocx(body, title);
+    const blob = new Blob([bytes.slice().buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'Документ Word сохранён',
+      description: `${title}.docx — откроется в Word с оформлением`,
+    });
   };
 
   const handlePrint = () => {

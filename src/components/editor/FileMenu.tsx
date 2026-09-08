@@ -395,7 +395,7 @@ const FileMenu = (p: Props) => {
               className="mb-4 h-8 w-[360px] rounded-[2px] border border-[hsl(var(--win-ribbon-border))] px-2 text-[13px] outline-none focus:border-[hsl(var(--win-title))]"
             />
             <div className="flex flex-col items-start gap-2">
-              <FlatBtn icon="FileType2" label="Документ Word (.doc)" onClick={p.onExportDoc} />
+              <FlatBtn icon="FileType2" label="Документ Word (.docx)" onClick={p.onExportDoc} />
               <FlatBtn icon="Code" label="Веб-страница (.html)" onClick={p.onExportHtml} />
               <FlatBtn icon="FileDown" label="PDF (через печать)" onClick={p.onPrint} />
             </div>
@@ -407,7 +407,7 @@ const FileMenu = (p: Props) => {
             <SectionTitle>Экспорт</SectionTitle>
             <div className="flex flex-col items-start gap-2">
               <FlatBtn icon="FileDown" label="Создать документ PDF" onClick={p.onPrint} />
-              <FlatBtn icon="FileType2" label="Изменить тип файла (.doc)" onClick={p.onExportDoc} />
+              <FlatBtn icon="FileType2" label="Изменить тип файла (.docx)" onClick={p.onExportDoc} />
               <FlatBtn icon="Code" label="Веб-страница (.html)" onClick={p.onExportHtml} />
             </div>
           </>

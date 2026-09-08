@@ -44,8 +44,35 @@ const runToHtml = (run: string): string => {
   return html;
 };
 
+/**
+ * Разбирает описание списков документа: какой номер списка
+ * означает нумерацию, а какой — маркеры.
+ */
+const parseNumbering = (xml: string): Map<string, boolean> => {
+  /* сначала запоминаем формат каждого описания списка */
+  const abstract = new Map<string, boolean>();
+  for (const m of xml.matchAll(
+    /<w:abstractNum[^>]*w:abstractNumId="(\d+)"[\s\S]*?<\/w:abstractNum>/g,
+  )) {
+    const first = m[0].match(/<w:lvl\b[\s\S]*?<\/w:lvl>/)?.[0] ?? '';
+    const fmt = first.match(/<w:numFmt[^>]*w:val="(\w+)"/)?.[1] ?? 'bullet';
+    abstract.set(m[1], fmt !== 'bullet' && fmt !== 'none');
+  }
+
+  /* затем связываем с номерами, которыми помечены абзацы */
+  const result = new Map<string, boolean>();
+  for (const m of xml.matchAll(
+    /<w:num\s[^>]*w:numId="(\d+)"[^>]*>([\s\S]*?)<\/w:num>/g,
+  )) {
+    const ref = m[2].match(/<w:abstractNumId[^>]*w:val="(\d+)"/)?.[1];
+    if (ref !== undefined) result.set(m[1], abstract.get(ref) ?? false);
+  }
+
+  return result;
+};
+
 /** Абзац: заголовок, элемент списка или обычный текст */
-const paraToHtml = (para: string): string => {
+const paraToHtml = (para: string, numbering?: Map<string, boolean>): string => {
   const inner = [...para.matchAll(/<w:r(?:\s[^>]*)?>([\s\S]*?)<\/w:r>/g)]
     .map((m) => runToHtml(m[1]))
     .join('');
@@ -59,8 +86,15 @@ const paraToHtml = (para: string): string => {
     /^(?:List(?:Paragraph|Bullet|Number)|Abzacspiska|Spisok)/i.test(style);
 
   if (isList) {
-    const ordered = /Number/i.test(style);
-    return `<li data-ordered="${ordered}">${inner || '&nbsp;'}</li>`;
+    const numId = props.match(/<w:numId[^>]*w:val="(\d+)"/)?.[1];
+    const level = Number(props.match(/<w:ilvl[^>]*w:val="(\d+)"/)?.[1] ?? 0);
+
+    /* формат берём из описания списка, а если его нет — из названия стиля */
+    const ordered =
+      (numId !== undefined ? numbering?.get(numId) : undefined) ??
+      /Number/i.test(style);
+
+    return `<li data-ordered="${ordered}" data-level="${level}">${inner || '&nbsp;'}</li>`;
   }
 
   const heading = style.match(/^(?:Heading|Za?golovok|.*?)(\d)$/i)?.[1];
@@ -85,7 +119,7 @@ const paraToHtml = (para: string): string => {
 };
 
 /** Таблица документа */
-const tableToHtml = (table: string): string => {
+const tableToHtml = (table: string, numbering?: Map<string, boolean>): string => {
   const rows = [...table.matchAll(/<w:tr(?:\s[^>]*)?>([\s\S]*?)<\/w:tr>/g)];
   if (!rows.length) return '';
 
@@ -94,7 +128,7 @@ const tableToHtml = (table: string): string => {
       const cells = [...r[1].matchAll(/<w:tc(?:\s[^>]*)?>([\s\S]*?)<\/w:tc>/g)]
         .map((c) => {
           const paras = [...c[1].matchAll(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g)]
-            .map((p) => paraToHtml(p[1]));
+            .map((p) => paraToHtml(p[1], numbering));
 
           /* один абзац в ячейке показываем без обёртки — как в Word */
           const text =
@@ -119,12 +153,36 @@ const tableToHtml = (table: string): string => {
   return `<table>${body}</table>`;
 };
 
-/** Собирает подряд идущие элементы списка в маркированный или нумерованный */
+/**
+ * Собирает подряд идущие пункты в списки. Маркированные и нумерованные
+ * не смешиваются: при смене вида начинается новый список.
+ */
 const wrapLists = (html: string) =>
-  html.replace(/(?:<li data-ordered="(?:true|false)">[\s\S]*?<\/li>)+/g, (m) => {
-    const tag = m.includes('data-ordered="true"') ? 'ol' : 'ul';
-    return `<${tag}>${m.replace(/ data-ordered="(?:true|false)"/g, '')}</${tag}>`;
-  });
+  html.replace(
+    /(?:<li data-ordered="(?:true|false)" data-level="\d+">[\s\S]*?<\/li>)+/g,
+    (chunk) => {
+      const items = [
+        ...chunk.matchAll(
+          /<li data-ordered="(true|false)" data-level="(\d+)">([\s\S]*?)<\/li>/g,
+        ),
+      ];
+
+      const groups: { ordered: boolean; items: string[] }[] = [];
+      items.forEach((it) => {
+        const ordered = it[1] === 'true';
+        const last = groups[groups.length - 1];
+        if (last && last.ordered === ordered) last.items.push(it[3]);
+        else groups.push({ ordered, items: [it[3]] });
+      });
+
+      return groups
+        .map((g) => {
+          const tag = g.ordered ? 'ol' : 'ul';
+          return `<${tag}>${g.items.map((i) => `<li>${i}</li>`).join('')}</${tag}>`;
+        })
+        .join('');
+    },
+  );
 
 /**
  * Превращает содержимое .docx в разметку документа.
@@ -133,13 +191,20 @@ const wrapLists = (html: string) =>
 export const docxToHtml = (bytes: Uint8Array): string | null => {
   let files: Record<string, Uint8Array>;
   try {
-    files = unzipSync(bytes, { filter: (f) => f.name === 'word/document.xml' });
+    files = unzipSync(bytes, {
+      filter: (f) =>
+        f.name === 'word/document.xml' || f.name === 'word/numbering.xml',
+    });
   } catch {
     return null;
   }
 
   const doc = files['word/document.xml'];
   if (!doc) return null;
+
+  const numbering = files['word/numbering.xml']
+    ? parseNumbering(strFromU8(files['word/numbering.xml']))
+    : undefined;
 
   const xml = strFromU8(doc);
   const body = xml.match(/<w:body>([\s\S]*?)<\/w:body>/)?.[1] ?? xml;
@@ -151,10 +216,10 @@ export const docxToHtml = (bytes: Uint8Array): string | null => {
   for (const m of body.matchAll(re)) {
     const chunk = m[0];
     if (chunk.startsWith('<w:tbl')) {
-      parts.push(tableToHtml(chunk));
+      parts.push(tableToHtml(chunk, numbering));
     } else {
       const innerMatch = chunk.match(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/);
-      parts.push(innerMatch ? paraToHtml(innerMatch[1]) : '<p><br></p>');
+      parts.push(innerMatch ? paraToHtml(innerMatch[1], numbering) : '<p><br></p>');
     }
   }
 
