@@ -234,9 +234,12 @@ const bodyFromHtml = (root: Element): string => {
       return;
     }
 
-    const heading = tag.match(/^H([1-6])$/)?.[1];
+    /* уровень заголовка берём из применённого стиля, иначе из тега */
+    const level = Number(el.getAttribute('data-level'));
+    const heading = level || Number(tag.match(/^H([1-6])$/)?.[1] ?? 0);
+
     const style = heading
-      ? `Heading${Math.min(3, Number(heading))}`
+      ? `Heading${Math.min(3, heading)}`
       : tag === 'BLOCKQUOTE'
         ? 'Quote'
         : undefined;

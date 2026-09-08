@@ -21,6 +21,9 @@ import ParagraphDialog from '@/components/editor/ParagraphDialog';
 import { useFormat } from '@/hooks/use-format';
 import { useTables } from '@/hooks/use-tables';
 import TableDialog from '@/components/editor/TableDialog';
+import StyleDialog from '@/components/editor/StyleDialog';
+import StylesPane from '@/components/editor/StylesPane';
+import { useStyles } from '@/hooks/use-styles';
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
 import type { DocTemplate } from '@/components/editor/fileTemplates';
 import { htmlToDocx } from '@/lib/docx-writer';
@@ -203,6 +206,7 @@ const Editor = () => {
     exec,
     recount,
     notify: (title, description) => toast({ title, description }),
+    pageCount: () => stats.pages,
   });
 
   const review = useReview({
@@ -219,6 +223,12 @@ const Editor = () => {
   const fmt = useFormat({
     editorRef,
     exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+  });
+
+  const docStyles = useStyles({
+    editorRef,
     recount,
     notify: (title, description) => toast({ title, description }),
   });
@@ -253,14 +263,20 @@ const Editor = () => {
   const getHeadings = useCallback(() => {
     const root = editorRef.current;
     if (!root) return [];
-    return Array.from(root.querySelectorAll('h1, h2, h3')).map((h, i) => {
-      if (!h.id) h.id = `pv-nav-${i}`;
-      return {
-        id: h.id,
-        text: h.textContent ?? '',
-        level: Number(h.tagName[1]),
-      };
-    });
+    /* заголовки узнаём и по тегу, и по уровню применённого стиля */
+    return Array.from(
+      root.querySelectorAll('h1, h2, h3, [data-level]'),
+    )
+      .filter((h) => h.textContent?.trim())
+      .map((h, i) => {
+        if (!h.id) h.id = `pv-nav-${i}`;
+        const attr = Number(h.getAttribute('data-level'));
+        return {
+          id: h.id,
+          text: h.textContent ?? '',
+          level: attr || Number(h.tagName[1]) || 1,
+        };
+      });
   }, []);
 
   const goToHeading = (id: string) =>
@@ -605,6 +621,13 @@ const Editor = () => {
         onStyle={tables.style}
         onSort={tables.sort}
         onSum={tables.sum}
+        styles={docStyles.styles}
+        activeStyle={docStyles.activeId}
+        onStyleApply={docStyles.apply}
+        onStylesPane={() => docStyles.setPaneOpen(true)}
+        onStyleCreate={docStyles.create}
+        onStyleUpdate={docStyles.updateFromSelection}
+        onStyleClear={docStyles.clear}
         onFormatPainter={fmt.pasteFormat}
         hasSample={fmt.hasSample}
         onFontDialog={fmt.openFont}
@@ -750,6 +773,17 @@ const Editor = () => {
           pageFlow={pageFlow}
           splitView={splitView}
         />
+
+        <StylesPane
+          open={docStyles.paneOpen}
+          styles={docStyles.styles}
+          activeId={docStyles.activeId}
+          onClose={() => docStyles.setPaneOpen(false)}
+          onApply={docStyles.apply}
+          onEdit={docStyles.edit}
+          onCreate={docStyles.create}
+          onClear={docStyles.clear}
+        />
       </div>
 
       {options.showStatusBar && (
@@ -806,6 +840,14 @@ const Editor = () => {
           setFileMenu(false);
           setOptionsOpen(true);
         }}
+      />
+
+      <StyleDialog
+        open={docStyles.dialogOpen}
+        initial={docStyles.editing}
+        onClose={() => docStyles.setDialogOpen(false)}
+        onSave={docStyles.save}
+        onDelete={docStyles.remove}
       />
 
       <TableDialog

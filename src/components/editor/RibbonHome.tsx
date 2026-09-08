@@ -9,6 +9,8 @@ import {
   SplitBtn,
 } from './RibbonControls';
 import { BULLETS, NUMBER_FORMATS } from '@/hooks/use-format';
+import type { DocStyle } from '@/lib/doc-styles';
+import { styleCss } from '@/lib/doc-styles';
 
 const FONTS = [
   'Calibri (Основной)',
@@ -29,15 +31,6 @@ const FONT_VALUE: Record<string, string> = {
 };
 
 const SIZES = ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '36', '48'];
-
-const STYLES = [
-  { name: '⁋ Обычный', label: 'АаБбВвГг', cmd: 'p', css: 'text-[13px]' },
-  { name: '⁋ Без инт…', label: 'АаБбВвГг', cmd: 'p', css: 'text-[13px]' },
-  { name: 'Заголово…', label: 'АаБбВг', cmd: 'h2', css: 'text-[15px] text-[#2e74b5]' },
-  { name: 'Заголово…', label: 'АаБбВг', cmd: 'h3', css: 'text-[14px] text-[#2e74b5]' },
-  { name: 'Заголовок', label: 'Aab', cmd: 'h1', css: 'text-[20px]' },
-  { name: 'Подзагол…', label: 'АаБбВвГг', cmd: 'h4', css: 'text-[13px] text-[#5a5a5a]' },
-];
 
 export interface RibbonHomeProps {
   onCommand: (command: string, value?: string) => void;
@@ -67,6 +60,13 @@ export interface RibbonHomeProps {
   formatMarks?: boolean;
   onFormatPainter: () => void;
   hasSample?: boolean;
+  styles: DocStyle[];
+  activeStyle: string;
+  onStyleApply: (style: DocStyle) => void;
+  onStylesPane: () => void;
+  onStyleCreate: () => void;
+  onStyleUpdate: () => void;
+  onStyleClear: () => void;
 }
 
 const Combo = ({
@@ -289,23 +289,45 @@ const RibbonHome = (p: RibbonHomeProps) => (
       </VStack>
     </RibbonGroup>
 
-    <RibbonGroup title="Стили">
+    <RibbonGroup title="Стили" onDialog={p.onStylesPane}>
       <div className="flex items-center gap-[2px]">
-        {STYLES.map((s, i) => (
+        {p.styles.slice(0, 7).map((s) => (
           <button
-            key={i}
+            key={s.id}
             type="button"
-            title={s.name}
+            title={`${s.name} — стиль ${s.kind === 'character' ? 'знака' : 'абзаца'}`}
+            data-active={p.activeStyle === s.id ? 'true' : 'false'}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => p.onCommand('formatBlock', s.cmd)}
-            className="flex h-[58px] w-[58px] flex-col items-center justify-between rounded-[2px] border border-[hsl(var(--win-ribbon-border))] bg-white px-1 py-1 transition-colors hover:border-[hsl(var(--win-title))]"
+            onClick={() => p.onStyleApply(s)}
+            className={`flex h-[58px] w-[58px] flex-col items-center justify-between rounded-[2px] border bg-white px-1 py-1 transition-colors hover:border-[hsl(var(--win-title))] ${
+              p.activeStyle === s.id
+                ? 'border-[hsl(var(--win-title))] shadow-[inset_0_0_0_1px_hsl(var(--win-title))]'
+                : 'border-[hsl(var(--win-ribbon-border))]'
+            }`}
           >
-            <span className={`flex flex-1 items-center ${s.css}`}>{s.label}</span>
+            <span
+              className="flex flex-1 items-center overflow-hidden"
+              style={{ ...styleCss(s), fontSize: 13, lineHeight: 1.1 }}
+            >
+              АаБбВв
+            </span>
             <span className="w-full truncate text-center text-[9px] text-[hsl(var(--win-group-label))]">
               {s.name}
             </span>
           </button>
         ))}
+
+        <Menu
+          icon="Ellipsis"
+          title="Больше стилей"
+          width={230}
+          items={[
+            { label: 'Область стилей…', run: p.onStylesPane },
+            { label: 'Создать стиль…', run: p.onStyleCreate },
+            { label: 'Обновить по образцу', run: p.onStyleUpdate },
+            { label: 'Очистить форматирование', run: p.onStyleClear },
+          ]}
+        />
       </div>
     </RibbonGroup>
 

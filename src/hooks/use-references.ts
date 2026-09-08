@@ -5,10 +5,18 @@ interface Params {
   exec: (command: string, value?: string) => void;
   recount: () => void;
   notify: (title: string, description?: string) => void;
+  /** Сколько страниц в документе — нужно для номеров в оглавлении */
+  pageCount: () => number;
 }
 
 /** Сноски, оглавление, ссылки, названия и указатели вкладки «Ссылки» */
-export const useReferences = ({ editorRef, exec, recount, notify }: Params) => {
+export const useReferences = ({
+  editorRef,
+  exec,
+  recount,
+  notify,
+  pageCount,
+}: Params) => {
   const [citeStyle, setCiteStyle] = useState('APA');
   const [sources, setSources] = useState<string[]>([]);
   const [noteIndex, setNoteIndex] = useState(0);
@@ -79,18 +87,34 @@ export const useReferences = ({ editorRef, exec, recount, notify }: Params) => {
           '<p class="pv-toc-row pv-toc-l2"><span>Введите название главы (уровень 2)</span><span>2</span></p>' +
           '<p class="pv-toc-row pv-toc-l3"><span>Введите название главы (уровень 3)</span><span>3</span></p>';
       } else {
-        const heads = Array.from(root.querySelectorAll('h1, h2, h3'));
+        /* заголовки ищем и по тегу, и по уровню стиля */
+        const heads = Array.from(
+          root.querySelectorAll<HTMLElement>('h1, h2, h3, [data-level]'),
+        ).filter((h) => h.textContent?.trim());
+
         if (!heads.length) {
           notify('Заголовков нет', 'Примените стиль «Заголовок» к тексту');
           return;
         }
+
+        /* номер страницы считаем по реальному положению заголовка */
+        const pageHeight = root.clientHeight
+          ? Math.max(1, root.scrollHeight / Math.max(1, pageCount()))
+          : 0;
+
         heads.forEach((h, i) => {
-          const lv = Number(h.tagName[1]);
-          const id = `pv-h-${i}`;
-          h.id = id;
-          inner += `<p class="pv-toc-row pv-toc-l${lv}"><span>${h.textContent}</span><span>${
-            i + 1
-          }</span></p>`;
+          const attr = Number(h.getAttribute('data-level'));
+          const lv = attr || Number(h.tagName[1]) || 1;
+
+          h.id = `pv-h-${i}`;
+
+          const page = pageHeight
+            ? Math.max(1, Math.ceil((h.offsetTop + 1) / pageHeight))
+            : i + 1;
+
+          inner +=
+            `<p class="pv-toc-row pv-toc-l${Math.min(3, lv)}">` +
+            `<span>${h.textContent}</span><span>${page}</span></p>`;
         });
       }
 
@@ -99,7 +123,7 @@ export const useReferences = ({ editorRef, exec, recount, notify }: Params) => {
       recount();
       notify('Оглавление вставлено');
     },
-    [notify, recount],
+    [notify, recount, pageCount],
   );
 
   const updateToc = () => {
