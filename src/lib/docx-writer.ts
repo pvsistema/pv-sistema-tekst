@@ -71,6 +71,19 @@ const applyStyle = (el: Element, fmt: Fmt): Fmt => {
   const st = (el as HTMLElement).style;
   const next = { ...fmt };
 
+  /*
+   * У фигурного текста оформление лежит на внутреннем блоке, а надпись
+   * и подпись фигуры печатаются обычным текстом — забираем их вид тут.
+   */
+  const art = el.querySelector?.('.pv-wordart-body') as HTMLElement | null;
+  if (art) {
+    next.b = true;
+    if (art.style.fontSize) next.size = toHalfPoints(art.style.fontSize) ?? next.size;
+    if (art.style.color) next.color = toHex(art.style.color) ?? next.color;
+    if (art.style.fontFamily)
+      next.font = art.style.fontFamily.replace(/["']/g, '').split(',')[0].trim();
+  }
+
   if (st.fontWeight === 'bold' || Number(st.fontWeight) >= 600) next.b = true;
   if (st.fontStyle === 'italic') next.i = true;
   if (st.textDecoration?.includes('underline')) next.u = true;

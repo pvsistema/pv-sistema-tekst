@@ -114,15 +114,9 @@ const RibbonInsert = (p: TabActions) => {
       '<table style="width:60%"><tr><th>Показатель</th><th>Значение</th></tr><tr><td>Январь</td><td>120</td></tr><tr><td>Февраль</td><td>180</td></tr><tr><td>Март</td><td>240</td></tr></table><p><br></p>',
     );
 
-  const insertTextBox = () =>
-    html(
-      '<div style="border:1px solid #7f7f7f;padding:10px;margin:8px 0;width:60%">Текстовое поле — введите текст</div><p><br></p>',
-    );
+  const insertTextBox = () => p.onTextBox?.();
 
-  const insertWordArt = () =>
-    html(
-      '<p style="font-size:34px;font-weight:700;color:#2f5496;text-shadow:1px 1px 0 #bfbfbf">Заголовок</p>',
-    );
+  const insertWordArt = () => p.onWordArt?.();
 
   const insertDropCap = () => p.onCommand('formatBlock', 'h1');
 
@@ -182,7 +176,7 @@ const RibbonInsert = (p: TabActions) => {
           icon="Shapes"
           lines={['Фигуры']}
           caret
-          onClick={() => html('<div style="width:120px;height:60px;border:2px solid #2f5496;border-radius:4px;margin:8px 0"></div>')}
+          onClick={() => p.onShapes?.()}
         />
         <BigCmd icon="Sparkles" lines={['Значки']} onClick={() => p.onCommand('insertText', '★')} />
         <BigCmd

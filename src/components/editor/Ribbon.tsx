@@ -52,6 +52,11 @@ const Ribbon = (p: Props) => {
     onZoom: p.onZoom,
     onHeaderFooter: p.onHeaderFooter,
     onBreak: p.onBreak,
+    onShapes: p.onShapes,
+    onTextBox: p.onTextBox,
+    onWordArt: p.onWordArt,
+    onWrap: p.onWrap,
+    onOrder: p.onOrder,
     zoom: p.zoom,
   };
 

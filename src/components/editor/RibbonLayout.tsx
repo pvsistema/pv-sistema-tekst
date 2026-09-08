@@ -1,6 +1,18 @@
 import { RibbonGroup, BigCmd, SmallCmd, Stack, SpinBox, Menu } from './RibbonControls';
 import type { BreakKind } from '@/lib/breaks';
 import { BREAK_OPTIONS } from '@/lib/breaks';
+import type { WrapMode } from '@/lib/shapes';
+import { WRAP_LABELS } from '@/lib/shapes';
+
+/** Пояснения к режимам обтекания */
+const WRAP_HINTS: Record<WrapMode, string> = {
+  inline: 'Объект стоит в строке как буква',
+  square: 'Текст обходит объект по прямоугольнику',
+  tight: 'Текст прижимается к очертаниям',
+  'top-bottom': 'Текст идёт выше и ниже объекта',
+  behind: 'Объект лежит под текстом',
+  front: 'Объект закрывает текст',
+};
 import type { TabActions } from './RibbonTabs';
 
 export interface PageSetup {
@@ -34,6 +46,9 @@ export interface LayoutProps extends TabActions {
   onBreak?: (kind: BreakKind) => void;
   onRemoveBreak?: () => void;
   onRemoveAllBreaks?: () => void;
+  /** Обтекание и порядок наложения объектов */
+  onWrap?: (wrap: WrapMode) => void;
+  onOrder?: (dir: 'front' | 'back') => void;
 }
 
 const MARGIN_CYCLE = [2, 1, 2.54, 3];
@@ -177,10 +192,36 @@ const RibbonLayout = (p: LayoutProps) => {
       </RibbonGroup>
 
       <RibbonGroup title="Упорядочение">
-        <BigCmd icon="Move" lines={['Положение']} caret width={60} disabled />
-        <BigCmd icon="WrapText" lines={['Обтекание', 'текстом']} caret width={62} disabled />
-        <BigCmd icon="BringToFront" lines={['Переместить', 'вперед']} caret width={68} disabled />
-        <BigCmd icon="SendToBack" lines={['Переместить', 'назад']} caret width={68} disabled />
+        <div className="flex flex-col items-center justify-start pt-1">
+          <Menu
+            icon="WrapText"
+            title="Обтекание текстом"
+            width={230}
+            items={WRAP_LABELS.map((w, i) => ({
+              label: w.label,
+              hint: WRAP_HINTS[w.value],
+              group: i === 0 ? 'Обтекание текстом' : undefined,
+              run: () => p.onWrap?.(w.value),
+            }))}
+          />
+          <span className="mt-[2px] text-center text-[11px] leading-[1.15]">
+            Обтекание
+            <br />
+            текстом
+          </span>
+        </div>
+        <BigCmd
+          icon="BringToFront"
+          lines={['Переместить', 'вперед']}
+          width={68}
+          onClick={() => p.onOrder?.('front')}
+        />
+        <BigCmd
+          icon="SendToBack"
+          lines={['Переместить', 'назад']}
+          width={68}
+          onClick={() => p.onOrder?.('back')}
+        />
         <BigCmd
           icon="MousePointerClick"
           lines={['Область', 'выделения']}

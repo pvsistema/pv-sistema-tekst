@@ -12,6 +12,12 @@ export interface TabActions {
   onHeaderFooter?: (part: 'header' | 'footer') => void;
   /** Вставить разрыв страницы, колонки или раздела */
   onBreak?: (kind: import('@/lib/breaks').BreakKind) => void;
+  /** Графика: галерея фигур, надпись, фигурный текст */
+  onShapes?: () => void;
+  onTextBox?: () => void;
+  onWordArt?: () => void;
+  onWrap?: (wrap: import('@/lib/shapes').WrapMode) => void;
+  onOrder?: (dir: 'front' | 'back') => void;
 }
 
 export const RibbonHelp = (p: TabActions) => (

@@ -345,6 +345,42 @@
     content: "________________________________________________";
   }
 
+  /* фигуры, надписи и фигурный текст */
+  .pv-page .pv-object {
+    @apply relative select-none;
+  }
+
+  .pv-page .pv-object[data-object='wordart'],
+  .pv-page .pv-object[data-object='shape'] {
+    @apply cursor-move;
+  }
+
+  /* выделенный объект получает рамку и маркер изменения размера */
+  .pv-page .pv-object-active {
+    @apply outline-dashed outline-1 outline-offset-2 outline-[hsl(var(--win-title))];
+  }
+
+  /* маркер изменения размера — настоящий элемент, чтобы его ловила мышь */
+  .pv-page .pv-object-handle {
+    @apply pointer-events-auto absolute -bottom-[5px] -right-[5px] hidden h-[11px]
+      w-[11px] cursor-nwse-resize rounded-[2px] border border-white
+      bg-[hsl(var(--win-title))];
+  }
+
+  .pv-page .pv-object-active .pv-object-handle {
+    @apply block;
+  }
+
+  /* текст надписи правится как обычный абзац */
+  .pv-page .pv-textbox-body {
+    @apply cursor-text select-text text-[14px] leading-[1.45];
+  }
+
+  /* абзац-основа для объектов «за текстом» */
+  .pv-page {
+    @apply relative;
+  }
+
   /* ссылки, созданные автозаменой */
   .pv-page .pv-link {
     @apply text-[hsl(215_78%_43%)] underline underline-offset-2;

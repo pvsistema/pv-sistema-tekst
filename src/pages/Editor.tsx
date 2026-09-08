@@ -33,6 +33,10 @@ import {
   printOrder,
 } from '@/lib/print';
 import AutoCorrectDialog from '@/components/editor/AutoCorrectDialog';
+import { useShapes } from '@/hooks/use-shapes';
+import ShapesGallery, {
+  WordArtGallery,
+} from '@/components/editor/ShapesGallery';
 import BordersDialog from '@/components/editor/BordersDialog';
 import TabsDialog from '@/components/editor/TabsDialog';
 import TableDialog from '@/components/editor/TableDialog';
@@ -270,6 +274,13 @@ const Editor = () => {
 
   const docStyles = useStyles({
     editorRef,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+  });
+
+  const shapes = useShapes({
+    editorRef,
+    exec,
     recount,
     notify: (title, description) => toast({ title, description }),
   });
@@ -793,6 +804,11 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onSum={tables.sum}
         onHeaderFooter={openFurniture}
         onBreak={breaks.insert}
+        onShapes={() => shapes.setShapeDialog(true)}
+        onTextBox={shapes.insertTextBox}
+        onWordArt={() => shapes.setWordArtDialog(true)}
+        onWrap={shapes.setWrap}
+        onOrder={shapes.setOrder}
         onRemoveBreak={breaks.removeOne}
         onRemoveAllBreaks={breaks.removeAll}
         styles={docStyles.styles}
@@ -1030,6 +1046,18 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
           setFileMenu(false);
           setOptionsOpen(true);
         }}
+      />
+
+      <ShapesGallery
+        open={shapes.shapeDialog}
+        onClose={() => shapes.setShapeDialog(false)}
+        onPick={shapes.insertShape}
+      />
+
+      <WordArtGallery
+        open={shapes.wordArtDialog}
+        onClose={() => shapes.setWordArtDialog(false)}
+        onPick={shapes.insertWordArt}
       />
 
       <AutoCorrectDialog
