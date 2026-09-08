@@ -19,6 +19,8 @@ import UnsavedDialog from '@/components/editor/UnsavedDialog';
 import FontDialog from '@/components/editor/FontDialog';
 import ParagraphDialog from '@/components/editor/ParagraphDialog';
 import { useFormat } from '@/hooks/use-format';
+import { useTables } from '@/hooks/use-tables';
+import TableDialog from '@/components/editor/TableDialog';
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
 import type { DocTemplate } from '@/components/editor/fileTemplates';
 import { htmlToDocx } from '@/lib/docx-writer';
@@ -64,7 +66,7 @@ const Editor = () => {
   const [fontFamily, setFontFamily] = useState('Calibri (Основной)');
   const [fontSize, setFontSize] = useState('11');
   const [stats, setStats] = useState({ words: 0, chars: 0, pages: 1 });
-  /* знаки форматирования переключаются кнопкой на ленте */
+  /* работа с таблицами */
   const [showMarks, setShowMarks] = useState(false);
 
   /* конструктор */
@@ -220,6 +222,18 @@ const Editor = () => {
     recount,
     notify: (title, description) => toast({ title, description }),
   });
+
+  const tables = useTables({
+    editorRef,
+    exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+  });
+
+  /* вышли из таблицы — контекстная вкладка закрывается */
+  useEffect(() => {
+    if (!tables.inTable && tab === 'Таблица') setTab('Главная');
+  }, [tables.inTable, tab]);
 
   /* ── вкладка «Вид» ── */
   const applyViewMode = (m: ViewMode) => {
@@ -406,18 +420,7 @@ const Editor = () => {
   };
 
   /* ── вставка ── */
-  const insertTable = () => {
-    let html = '<table><thead><tr>';
-    for (let c = 0; c < 3; c += 1) html += `<th>Заголовок ${c + 1}</th>`;
-    html += '</tr></thead><tbody>';
-    for (let r = 0; r < 3; r += 1) {
-      html += '<tr>';
-      for (let c = 0; c < 3; c += 1) html += '<td>&nbsp;</td>';
-      html += '</tr>';
-    }
-    html += '</tbody></table><p><br></p>';
-    exec('insertHTML', html);
-  };
+  const insertTable = () => tables.setDialogOpen(true);
 
   const insertImage = () => imageRef.current?.click();
 
@@ -496,6 +499,29 @@ const Editor = () => {
       const start =
         node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element | null);
 
+      /* в таблице Tab переходит к следующей ячейке */
+      const cell = start?.closest('td, th');
+      if (cell) {
+        e.preventDefault();
+        const all = Array.from(
+          cell.closest('table')?.querySelectorAll('td, th') ?? [],
+        );
+        const next = all[all.indexOf(cell) + (e.shiftKey ? -1 : 1)];
+
+        if (next) {
+          const r = document.createRange();
+          r.selectNodeContents(next);
+          r.collapse(true);
+          sel?.removeAllRanges();
+          sel?.addRange(r);
+          return;
+        }
+
+        /* последняя ячейка — добавляем строку, как это делает Word */
+        if (!e.shiftKey) tables.addRow('below');
+        return;
+      }
+
       if (start?.closest('li')) {
         e.preventDefault();
         exec(e.shiftKey ? 'outdent' : 'indent');
@@ -509,7 +535,7 @@ const Editor = () => {
 
     el.addEventListener('keydown', onTab);
     return () => el.removeEventListener('keydown', onTab);
-  }, [exec]);
+  }, [exec, tables]);
 
   /* ── горячие клавиши ── */
   useEffect(() => {
@@ -564,6 +590,21 @@ const Editor = () => {
         onPaste={handlePaste}
         onCopy={handleCopy}
         onCut={handleCut}
+        inTable={tables.inTable}
+        onInsertRow={tables.addRow}
+        onInsertColumn={tables.addColumn}
+        onDeleteRow={tables.removeRow}
+        onDeleteColumn={tables.removeColumn}
+        onDeleteTable={tables.removeTable}
+        onMerge={tables.merge}
+        onSplitCell={tables.split}
+        onTableBorders={tables.borders}
+        onCellShading={tables.shading}
+        onBorderColor={tables.changeBorderColor}
+        onAlign={tables.align}
+        onStyle={tables.style}
+        onSort={tables.sort}
+        onSum={tables.sum}
         onFormatPainter={fmt.pasteFormat}
         hasSample={fmt.hasSample}
         onFontDialog={fmt.openFont}
@@ -765,6 +806,12 @@ const Editor = () => {
           setFileMenu(false);
           setOptionsOpen(true);
         }}
+      />
+
+      <TableDialog
+        open={tables.dialogOpen}
+        onClose={() => tables.setDialogOpen(false)}
+        onInsert={tables.insert}
       />
 
       <FontDialog

@@ -287,13 +287,30 @@ const bodyFromHtml = (root: Element): string => {
                 .map((c) => collectRuns(c, bold ? { b: true } : {}))
                 .join('') || run('', {});
 
-            const shade = isHead
-              ? '<w:shd w:val="clear" w:fill="EFEFEF"/>'
+            /* заливку берём из самой ячейки, иначе красим шапку */
+            const own = (td as HTMLElement).style?.backgroundColor;
+            const fill = own ? toHex(own) : isHead ? 'EFEFEF' : '';
+            const shade = fill
+              ? `<w:shd w:val="clear" w:fill="${fill}"/>`
               : '';
 
+            /* объединённые ячейки */
+            const colSpan = Number((td as HTMLTableCellElement).colSpan) || 1;
+            const rowSpan = Number((td as HTMLTableCellElement).rowSpan) || 1;
+            const span = colSpan > 1 ? `<w:gridSpan w:val="${colSpan}"/>` : '';
+            const vMerge = rowSpan > 1 ? '<w:vMerge w:val="restart"/>' : '';
+
+            const vAlign =
+              (td as HTMLElement).style?.verticalAlign === 'top'
+                ? 'top'
+                : (td as HTMLElement).style?.verticalAlign === 'bottom'
+                  ? 'bottom'
+                  : 'center';
+
             return (
-              `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${shade}` +
-              `<w:vAlign w:val="center"/></w:tcPr>` +
+              `<w:tc><w:tcPr><w:tcW w:w="${width * colSpan}" w:type="dxa"/>` +
+              `${span}${vMerge}${shade}` +
+              `<w:vAlign w:val="${vAlign}"/></w:tcPr>` +
               `<w:p>${pPr({ align: alignOf(td) })}${runs}</w:p></w:tc>`
             );
           })

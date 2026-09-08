@@ -6,6 +6,7 @@ import RibbonLayout, { LayoutProps } from './RibbonLayout';
 import RibbonLinks, { LinksProps } from './RibbonLinks';
 import RibbonReview, { ReviewProps } from './RibbonReview';
 import RibbonView, { ViewProps } from './RibbonView';
+import RibbonTable, { RibbonTableProps } from './RibbonTable';
 import {
   RibbonHelp,
   TabActions,
@@ -22,7 +23,8 @@ export const TABS = [
   'Справка',
 ] as const;
 
-export type RibbonTab = (typeof TABS)[number];
+/** «Таблица» — контекстная вкладка, её нет в общем ряду */
+export type RibbonTab = (typeof TABS)[number] | 'Таблица';
 
 interface Props
   extends RibbonHomeProps,
@@ -31,10 +33,13 @@ interface Props
     LayoutProps,
     LinksProps,
     ReviewProps,
-    ViewProps {
+    ViewProps,
+    RibbonTableProps {
   tab: RibbonTab;
   onTab: (t: RibbonTab) => void;
   onFileMenu: () => void;
+  /** Курсор внутри таблицы — показываем вкладку «Работа с таблицами» */
+  inTable?: boolean;
 }
 
 const Ribbon = (p: Props) => {
@@ -81,6 +86,20 @@ const Ribbon = (p: Props) => {
           </button>
         ))}
 
+        {p.inTable && (
+          <button
+            type="button"
+            onClick={() => p.onTab('Таблица')}
+            className={`h-[26px] rounded-t-[2px] px-3 text-[12px] transition-colors ${
+              p.tab === 'Таблица'
+                ? 'bg-white text-[hsl(0_0%_15%)]'
+                : 'bg-[hsl(280_45%_45%)] text-white hover:bg-[hsl(280_45%_52%)]'
+            }`}
+          >
+            Работа с таблицами
+          </button>
+        )}
+
         <div className="ml-2 hidden items-center gap-1.5 pb-1 text-[11px] text-white/85 lg:flex">
           <Icon name="Lightbulb" size={13} />
           <span>Что вы хотите сделать?</span>
@@ -104,6 +123,7 @@ const Ribbon = (p: Props) => {
         {p.tab === 'Ссылки' && <RibbonLinks {...p} />}
         {p.tab === 'Рецензирование' && <RibbonReview {...p} />}
         {p.tab === 'Вид' && <RibbonView {...p} />}
+        {p.tab === 'Таблица' && <RibbonTable {...p} />}
         {p.tab === 'Справка' && <RibbonHelp {...actions} />}
       </div>
     </div>
