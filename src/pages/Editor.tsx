@@ -16,6 +16,9 @@ import StatusBar from '@/components/editor/StatusBar';
 import FileMenu from '@/components/editor/FileMenu';
 import DropOverlay from '@/components/editor/DropOverlay';
 import UnsavedDialog from '@/components/editor/UnsavedDialog';
+import FontDialog from '@/components/editor/FontDialog';
+import ParagraphDialog from '@/components/editor/ParagraphDialog';
+import { useFormat } from '@/hooks/use-format';
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
 import type { DocTemplate } from '@/components/editor/fileTemplates';
 import { htmlToDocx } from '@/lib/docx-writer';
@@ -61,6 +64,8 @@ const Editor = () => {
   const [fontFamily, setFontFamily] = useState('Calibri (Основной)');
   const [fontSize, setFontSize] = useState('11');
   const [stats, setStats] = useState({ words: 0, chars: 0, pages: 1 });
+  /* знаки форматирования переключаются кнопкой на ленте */
+  const [showMarks, setShowMarks] = useState(false);
 
   /* конструктор */
   const [theme, setTheme] = useState<DocTheme>(THEMES[0]);
@@ -172,9 +177,15 @@ const Editor = () => {
   useEffect(() => {
     const root = editorRef.current;
     if (!root) return;
-    root.classList.toggle('pv-marks', options.showFormatMarks);
+    root.classList.toggle('pv-marks', options.showFormatMarks || showMarks);
     root.spellcheck = options.checkSpelling && !options.hideSpellErrors;
-  }, [options.showFormatMarks, options.checkSpelling, options.hideSpellErrors, viewMode]);
+  }, [
+    options.showFormatMarks,
+    showMarks,
+    options.checkSpelling,
+    options.hideSpellErrors,
+    viewMode,
+  ]);
 
   const exec = useCallback(
     (command: string, value?: string) => {
@@ -200,6 +211,14 @@ const Editor = () => {
     words: stats.words,
     chars: stats.chars,
     pages: stats.pages,
+  });
+
+  /* форматирование символов, абзацев и списков */
+  const fmt = useFormat({
+    editorRef,
+    exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
   });
 
   /* ── вкладка «Вид» ── */
@@ -464,6 +483,34 @@ const Editor = () => {
     return count;
   };
 
+  /* Tab внутри списка меняет уровень вложенности, как в Word */
+  useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+
+    const onTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+
+      const sel = window.getSelection();
+      const node = sel?.anchorNode;
+      const start =
+        node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element | null);
+
+      if (start?.closest('li')) {
+        e.preventDefault();
+        exec(e.shiftKey ? 'outdent' : 'indent');
+        return;
+      }
+
+      /* вне списка Tab делает отступ табуляции */
+      e.preventDefault();
+      exec('insertHTML', '<span class="pv-tab">\u2003\u2003</span>');
+    };
+
+    el.addEventListener('keydown', onTab);
+    return () => el.removeEventListener('keydown', onTab);
+  }, [exec]);
+
   /* ── горячие клавиши ── */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -517,6 +564,23 @@ const Editor = () => {
         onPaste={handlePaste}
         onCopy={handleCopy}
         onCut={handleCut}
+        onFormatPainter={fmt.pasteFormat}
+        hasSample={fmt.hasSample}
+        onFontDialog={fmt.openFont}
+        onParaDialog={fmt.openPara}
+        onChangeCase={fmt.applyCase}
+        onLineSpacing={fmt.setLineSpacing}
+        onFormatMarks={() => setShowMarks((v) => !v)}
+        formatMarks={showMarks || options.showFormatMarks}
+        onSortList={() => fmt.sortList()}
+        onMultilevel={fmt.multilevel}
+        onBullets={fmt.toggleBullets}
+        onNumbering={fmt.toggleNumbering}
+        onBullet={fmt.setBullet}
+        onNumberFormat={fmt.setNumberFormat}
+        onRestartNumbering={fmt.restartNumbering}
+        onBorders={() => fmt.setBorder('all')}
+        onShading={fmt.setShading}
         onInsertTable={insertTable}
         onInsertImage={insertImage}
         onPrint={handlePrint}
@@ -701,6 +765,20 @@ const Editor = () => {
           setFileMenu(false);
           setOptionsOpen(true);
         }}
+      />
+
+      <FontDialog
+        open={fmt.fontOpen}
+        initial={fmt.charInit}
+        onClose={() => fmt.setFontOpen(false)}
+        onApply={fmt.applyFont}
+      />
+
+      <ParagraphDialog
+        open={fmt.paraOpen}
+        initial={fmt.paraInit}
+        onClose={() => fmt.setParaOpen(false)}
+        onApply={fmt.applyPara}
       />
 
       <FindReplaceDialog

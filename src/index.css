@@ -276,6 +276,33 @@
     @apply underline decoration-dotted;
   }
 
+  /* список с произвольным маркером из библиотеки маркеров */
+  .pv-page ul.pv-bullet {
+    list-style: none;
+    padding-left: 1.4em;
+  }
+
+  .pv-page ul.pv-bullet > li::before {
+    content: var(--pv-bullet, "• ");
+    @apply -ml-[1.2em] inline-block w-[1.2em];
+  }
+
+  /* многоуровневый список: на каждом уровне своя нумерация */
+  .pv-page ol.pv-multilevel {
+    counter-reset: pv-lvl;
+    list-style: none;
+    padding-left: 1.8em;
+  }
+
+  .pv-page ol.pv-multilevel > li {
+    counter-increment: pv-lvl;
+  }
+
+  .pv-page ol.pv-multilevel > li::before {
+    content: counters(pv-lvl, ".") ". ";
+    @apply -ml-[1.8em] inline-block w-[1.8em] font-medium;
+  }
+
   /* знаки форматирования из «Параметров» */
   .pv-page.pv-marks p::after {
     content: "¶";
@@ -285,6 +312,20 @@
   .pv-page.pv-marks li::after {
     content: "¶";
     @apply ml-[2px] text-[hsl(210_50%_60%)];
+  }
+
+  .pv-page.pv-marks h1::after,
+  .pv-page.pv-marks h2::after,
+  .pv-page.pv-marks h3::after,
+  .pv-page.pv-marks h4::after {
+    content: "¶";
+    @apply ml-[2px] text-[hsl(210_50%_60%)];
+  }
+
+  /* позиция табуляции показывается стрелкой */
+  .pv-page.pv-marks .pv-tab::before {
+    content: "→";
+    @apply text-[hsl(210_50%_60%)];
   }
 
   /* режим «Структура» вкладки «Вид» */

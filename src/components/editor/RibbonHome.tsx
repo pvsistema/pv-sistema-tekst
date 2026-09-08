@@ -1,5 +1,14 @@
 import Icon from '@/components/ui/icon';
-import { RibbonGroup, SmallBtn, BigBtn, VStack, Row } from './RibbonControls';
+import {
+  RibbonGroup,
+  SmallBtn,
+  BigBtn,
+  VStack,
+  Row,
+  Menu,
+  SplitBtn,
+} from './RibbonControls';
+import { BULLETS, NUMBER_FORMATS } from '@/hooks/use-format';
 
 const FONTS = [
   'Calibri (Основной)',
@@ -41,6 +50,23 @@ export interface RibbonHomeProps {
   onPaste: () => void;
   onCopy: () => void;
   onCut: () => void;
+  onFontDialog: () => void;
+  onParaDialog: () => void;
+  onChangeCase: (mode: 'sentence' | 'lower' | 'upper' | 'capitalize' | 'toggle') => void;
+  onLineSpacing: (v: number) => void;
+  onFormatMarks: () => void;
+  onSortList: () => void;
+  onMultilevel: () => void;
+  onBullets: () => void;
+  onNumbering: () => void;
+  onBullet: (symbol: string) => void;
+  onNumberFormat: (format: string) => void;
+  onRestartNumbering: (start: number) => void;
+  onBorders: () => void;
+  onShading: (color: string) => void;
+  formatMarks?: boolean;
+  onFormatPainter: () => void;
+  hasSample?: boolean;
 }
 
 const Combo = ({
@@ -80,12 +106,13 @@ const RibbonHome = (p: RibbonHomeProps) => (
           icon="Paintbrush"
           title="Формат по образцу"
           label="Формат по образцу"
-          onClick={() => p.onCommand('removeFormat')}
+          active={p.hasSample}
+          onClick={p.onFormatPainter}
         />
       </VStack>
     </RibbonGroup>
 
-    <RibbonGroup title="Шрифт">
+    <RibbonGroup title="Шрифт" onDialog={p.onFontDialog}>
       <VStack>
         <Row>
           <Combo
@@ -105,7 +132,17 @@ const RibbonHome = (p: RibbonHomeProps) => (
             title="Уменьшить размер"
             onClick={() => p.onFontSize(String(Math.max(8, Number(p.fontSize) - 2)))}
           />
-          <SmallBtn icon="CaseSensitive" title="Регистр" onClick={() => p.onCommand('removeFormat')} />
+          <Menu
+            icon="CaseSensitive"
+            title="Регистр"
+            items={[
+              { label: 'Как в предложениях.', run: () => p.onChangeCase('sentence') },
+              { label: 'все строчные', run: () => p.onChangeCase('lower') },
+              { label: 'ВСЕ ПРОПИСНЫЕ', run: () => p.onChangeCase('upper') },
+              { label: 'Начинать С Прописных', run: () => p.onChangeCase('capitalize') },
+              { label: 'иЗМЕНИТЬ рЕГИСТР', run: () => p.onChangeCase('toggle') },
+            ]}
+          />
           <SmallBtn icon="Eraser" title="Очистить формат" onClick={() => p.onCommand('removeFormat')} />
         </Row>
         <Row>
@@ -137,25 +174,117 @@ const RibbonHome = (p: RibbonHomeProps) => (
       </VStack>
     </RibbonGroup>
 
-    <RibbonGroup title="Абзац">
+    <RibbonGroup title="Абзац" onDialog={p.onParaDialog}>
       <VStack>
         <Row>
-          <SmallBtn icon="List" title="Маркированный список" onClick={() => p.onCommand('insertUnorderedList')} />
-          <SmallBtn icon="ListOrdered" title="Нумерованный список" onClick={() => p.onCommand('insertOrderedList')} />
-          <SmallBtn icon="ListTree" title="Многоуровневый список" onClick={() => p.onCommand('insertOrderedList')} />
+          <SplitBtn icon="List" title="Маркированный список" onClick={p.onBullets}>
+            {(close) => (
+              <>
+                <p className="mb-1.5 text-[10px] text-slate-500">
+                  Библиотека маркеров
+                </p>
+                <div className="grid grid-cols-4 gap-1">
+                  {BULLETS.map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        close();
+                        p.onBullet(b);
+                      }}
+                      className="flex h-[34px] items-center justify-center rounded-[2px] border border-[hsl(var(--win-ribbon-border))] text-[15px] hover:border-[hsl(var(--win-title))]"
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </SplitBtn>
+
+          <SplitBtn
+            icon="ListOrdered"
+            title="Нумерованный список"
+            onClick={p.onNumbering}
+            width={200}
+          >
+            {(close) => (
+              <>
+                <p className="mb-1.5 text-[10px] text-slate-500">
+                  Библиотека нумерации
+                </p>
+                <div className="grid grid-cols-2 gap-1">
+                  {NUMBER_FORMATS.map((f) => (
+                    <button
+                      key={f.value}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        close();
+                        p.onNumberFormat(f.value);
+                      }}
+                      className="flex h-[30px] items-center justify-center rounded-[2px] border border-[hsl(var(--win-ribbon-border))] text-[11px] hover:border-[hsl(var(--win-title))]"
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 border-t pt-1.5">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      close();
+                      p.onRestartNumbering(1);
+                    }}
+                    className="w-full px-1 py-1 text-left text-[11px] hover:bg-[hsl(var(--win-hover))]"
+                  >
+                    Начать заново с 1
+                  </button>
+                </div>
+              </>
+            )}
+          </SplitBtn>
+          <SmallBtn icon="ListTree" title="Многоуровневый список" onClick={p.onMultilevel} />
           <SmallBtn icon="IndentDecrease" title="Уменьшить отступ" onClick={() => p.onCommand('outdent')} />
           <SmallBtn icon="IndentIncrease" title="Увеличить отступ" onClick={() => p.onCommand('indent')} />
-          <SmallBtn icon="ArrowDownAZ" title="Сортировка" onClick={() => p.onCommand('justifyLeft')} />
-          <SmallBtn icon="Pilcrow" title="Знаки абзацев" onClick={() => p.onCommand('justifyLeft')} />
+          <SmallBtn icon="ArrowDownAZ" title="Сортировка" onClick={p.onSortList} />
+          <SmallBtn
+            icon="Pilcrow"
+            title="Отображать все знаки"
+            active={p.formatMarks}
+            onClick={p.onFormatMarks}
+          />
         </Row>
         <Row>
           <SmallBtn icon="AlignLeft" title="По левому краю" onClick={() => p.onCommand('justifyLeft')} />
           <SmallBtn icon="AlignCenter" title="По центру" onClick={() => p.onCommand('justifyCenter')} />
           <SmallBtn icon="AlignRight" title="По правому краю" onClick={() => p.onCommand('justifyRight')} />
           <SmallBtn icon="AlignJustify" title="По ширине" onClick={() => p.onCommand('justifyFull')} />
-          <SmallBtn icon="StretchVertical" title="Интервал" onClick={() => p.onCommand('justifyLeft')} />
-          <SmallBtn icon="PaintBucket" title="Заливка" onClick={() => p.onCommand('hiliteColor', '#dbe5f1')} />
-          <SmallBtn icon="Grid2x2" title="Границы" onClick={() => p.onCommand('justifyLeft')} />
+          <Menu
+            icon="StretchVertical"
+            title="Междустрочный интервал"
+            items={[
+              { label: '1,0', run: () => p.onLineSpacing(1) },
+              { label: '1,15', run: () => p.onLineSpacing(1.15) },
+              { label: '1,5', run: () => p.onLineSpacing(1.5) },
+              { label: '2,0', run: () => p.onLineSpacing(2) },
+              { label: '2,5', run: () => p.onLineSpacing(2.5) },
+              { label: '3,0', run: () => p.onLineSpacing(3) },
+              { label: 'Другие варианты…', run: p.onParaDialog },
+            ]}
+          />
+          <label className="win-btn h-[22px] cursor-pointer px-1" title="Заливка">
+            <Icon name="PaintBucket" size={15} />
+            <input
+              type="color"
+              defaultValue="#dbe5f1"
+              onChange={(e) => p.onShading(e.target.value)}
+              className="h-0 w-0 opacity-0"
+            />
+          </label>
+          <SmallBtn icon="Grid2x2" title="Границы" onClick={p.onBorders} />
         </Row>
       </VStack>
     </RibbonGroup>

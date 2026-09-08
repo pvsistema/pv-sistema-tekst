@@ -1,0 +1,360 @@
+import { useCallback, useState } from 'react';
+import type { CharFormat, ParaFormat } from '@/lib/text-format';
+import {
+  DEFAULT_CHAR,
+  DEFAULT_PARA,
+  applyCharFormat,
+  applyParaFormat,
+  changeCase,
+  lineHeightOf,
+  readCharFormat,
+  readParaFormat,
+  selectedElement,
+  selectedParagraph,
+  selectedParagraphs,
+} from '@/lib/text-format';
+
+interface Options {
+  editorRef: React.RefObject<HTMLDivElement>;
+  exec: (command: string, value?: string) => void;
+  recount: () => void;
+  notify: (title: string, description?: string) => void;
+}
+
+/** Стили маркеров и форматов нумерации, как в библиотеках Word */
+export const BULLETS = ['•', '○', '▪', '◆', '➢', '✓', '–', '»'];
+export const NUMBER_FORMATS: { value: string; label: string }[] = [
+  { value: 'decimal', label: '1. 2. 3.' },
+  { value: 'lower-alpha', label: 'a) b) c)' },
+  { value: 'upper-alpha', label: 'A. B. C.' },
+  { value: 'lower-roman', label: 'i. ii. iii.' },
+  { value: 'upper-roman', label: 'I. II. III.' },
+];
+
+/**
+ * Форматирование символов, абзацев и списков — то, что в Word
+ * собрано на вкладке «Главная».
+ */
+export const useFormat = ({ editorRef, exec, recount, notify }: Options) => {
+  const [fontOpen, setFontOpen] = useState(false);
+  const [paraOpen, setParaOpen] = useState(false);
+  const [charInit, setCharInit] = useState<CharFormat>(DEFAULT_CHAR);
+  const [paraInit, setParaInit] = useState<ParaFormat>(DEFAULT_PARA);
+
+  const root = () => editorRef.current;
+
+  /** Открывает окно «Шрифт», подставив оформление под курсором */
+  const openFont = useCallback(() => {
+    setCharInit(readCharFormat(root()));
+    setFontOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Открывает окно «Абзац», подставив настройки текущего абзаца */
+  const openPara = useCallback(() => {
+    setParaInit(readParaFormat(root()));
+    setParaOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const applyFont = useCallback(
+    (f: CharFormat) => {
+      setFontOpen(false);
+      if (applyCharFormat(root(), f)) {
+        recount();
+        notify('Оформление применено');
+      } else {
+        notify('Выделите текст', 'Оформление применяется к выделенному тексту');
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [recount, notify],
+  );
+
+  const applyPara = useCallback(
+    (f: ParaFormat) => {
+      setParaOpen(false);
+      const n = applyParaFormat(root(), f);
+      recount();
+      notify(
+        n > 1 ? `Настройки применены к ${n} абзацам` : 'Настройки абзаца применены',
+      );
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [recount, notify],
+  );
+
+  /** Междустрочный интервал одной командой из ленты */
+  const setLineSpacing = useCallback(
+    (v: number) => {
+      const list = selectedParagraphs(root());
+      if (!list.length) {
+        notify('Установите курсор в абзац');
+        return;
+      }
+      list.forEach((el) => {
+        el.style.lineHeight = String(v);
+      });
+      recount();
+      notify(`Междустрочный интервал ${String(v).replace('.', ',')}`);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [recount, notify],
+  );
+
+  /** Интервал перед абзацем или после него — команды группы «Абзац» */
+  const addSpacing = useCallback(
+    (where: 'before' | 'after', pt: number) => {
+      const list = selectedParagraphs(root());
+      list.forEach((el) => {
+        if (where === 'before') el.style.marginTop = `${pt * 1.333}px`;
+        else el.style.marginBottom = `${pt * 1.333}px`;
+      });
+      recount();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [recount],
+  );
+
+  const applyCase = useCallback(
+    (mode: 'sentence' | 'lower' | 'upper' | 'capitalize' | 'toggle') => {
+      if (!changeCase(root(), mode)) {
+        notify('Выделите текст', 'Регистр меняется у выделенного текста');
+        return;
+      }
+      recount();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [recount, notify],
+  );
+
+  /* ── списки ── */
+
+  /** Ближайший к курсору список */
+  const currentList = (): HTMLElement | null => {
+    let el = selectedElement(root());
+    while (el && el !== root() && el.tagName !== 'UL' && el.tagName !== 'OL') {
+      el = el.parentElement;
+    }
+    return el && el !== root() ? el : null;
+  };
+
+  const toggleBullets = useCallback(() => {
+    exec('insertUnorderedList');
+  }, [exec]);
+
+  const toggleNumbering = useCallback(() => {
+    exec('insertOrderedList');
+  }, [exec]);
+
+  /** Меняет маркер у списка, в котором стоит курсор */
+  const setBullet = useCallback(
+    (symbol: string) => {
+      const list = currentList();
+      if (!list || list.tagName !== 'UL') {
+        exec('insertUnorderedList');
+      }
+      const target = currentList();
+      if (!target) return;
+
+      target.style.listStyleType = 'none';
+      target.setAttribute('data-bullet', symbol);
+      target.classList.add('pv-bullet');
+      target.style.setProperty('--pv-bullet', `"${symbol}  "`);
+      recount();
+      notify(`Маркер списка: ${symbol}`);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [exec, recount, notify],
+  );
+
+  /** Меняет вид нумерации: цифры, буквы или римские числа */
+  const setNumberFormat = useCallback(
+    (format: string) => {
+      const list = currentList();
+      if (!list || list.tagName !== 'OL') {
+        exec('insertOrderedList');
+      }
+      const target = currentList();
+      if (!target) return;
+
+      target.classList.remove('pv-bullet');
+      target.style.removeProperty('--pv-bullet');
+      target.style.listStyleType = format;
+      recount();
+      notify('Формат нумерации изменён');
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [exec, recount, notify],
+  );
+
+  /** Начать нумерацию заново либо продолжить предыдущую */
+  const restartNumbering = useCallback(
+    (start: number) => {
+      const list = currentList();
+      if (!list || list.tagName !== 'OL') {
+        notify('Курсор не в нумерованном списке');
+        return;
+      }
+      (list as HTMLOListElement).start = start;
+      recount();
+      notify(start === 1 ? 'Нумерация начата заново' : `Нумерация с ${start}`);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [recount, notify],
+  );
+
+  /** Многоуровневый список: вложенность задаётся клавишей Tab */
+  const multilevel = useCallback(() => {
+    exec('insertOrderedList');
+    const list = currentList();
+    if (list) list.classList.add('pv-multilevel');
+    notify(
+      'Многоуровневый список',
+      'Tab — уровень ниже, Shift+Tab — уровень выше',
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exec, notify]);
+
+  /** Сортировка пунктов списка или строк по алфавиту */
+  const sortList = useCallback(
+    (desc = false) => {
+      const list = currentList();
+      if (!list) {
+        notify('Курсор не в списке', 'Сортируются пункты списка');
+        return;
+      }
+
+      const items = Array.from(list.children).filter(
+        (c) => c.tagName === 'LI',
+      ) as HTMLElement[];
+
+      items
+        .sort((a, b) => {
+          const r = (a.textContent ?? '').localeCompare(
+            b.textContent ?? '',
+            'ru',
+          );
+          return desc ? -r : r;
+        })
+        .forEach((li) => list.appendChild(li));
+
+      recount();
+      notify(desc ? 'Список отсортирован от Я до А' : 'Список отсортирован от А до Я');
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [recount, notify],
+  );
+
+  /* ── границы и заливка абзаца ── */
+
+  const setShading = useCallback(
+    (color: string) => {
+      const list = selectedParagraphs(root());
+      if (!list.length) {
+        notify('Установите курсор в абзац');
+        return;
+      }
+      list.forEach((el) => {
+        el.style.backgroundColor = color;
+        el.style.padding = el.style.padding || '4px 6px';
+      });
+      recount();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [recount, notify],
+  );
+
+  /** Границы абзаца: со всех сторон, по одной или снять */
+  const setBorder = useCallback(
+    (
+      side: 'all' | 'top' | 'bottom' | 'left' | 'right' | 'none' | 'outside',
+      style = '1px solid #808080',
+    ) => {
+      const list = selectedParagraphs(root());
+      if (!list.length) {
+        notify('Установите курсор в абзац');
+        return;
+      }
+
+      list.forEach((el) => {
+        el.style.border = '';
+        el.style.borderTop = '';
+        el.style.borderBottom = '';
+        el.style.borderLeft = '';
+        el.style.borderRight = '';
+
+        if (side === 'none') {
+          el.style.padding = '';
+          return;
+        }
+
+        el.style.padding = el.style.padding || '4px 6px';
+        if (side === 'all' || side === 'outside') el.style.border = style;
+        if (side === 'top') el.style.borderTop = style;
+        if (side === 'bottom') el.style.borderBottom = style;
+        if (side === 'left') el.style.borderLeft = style;
+        if (side === 'right') el.style.borderRight = style;
+      });
+
+      recount();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [recount, notify],
+  );
+
+  /** Формат по образцу: запоминает оформление и переносит на другой текст */
+  const [sample, setSample] = useState<CharFormat | null>(null);
+
+  const copyFormat = useCallback(() => {
+    const f = readCharFormat(root());
+    setSample(f);
+    notify('Формат скопирован', 'Выделите текст, к которому его применить');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notify]);
+
+  const pasteFormat = useCallback(() => {
+    if (!sample) {
+      copyFormat();
+      return;
+    }
+    if (applyCharFormat(root(), sample)) {
+      recount();
+      notify('Формат применён');
+      setSample(null);
+    } else {
+      notify('Выделите текст');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sample, copyFormat, recount, notify]);
+
+  return {
+    fontOpen,
+    paraOpen,
+    charInit,
+    paraInit,
+    setFontOpen,
+    setParaOpen,
+    openFont,
+    openPara,
+    applyFont,
+    applyPara,
+    setLineSpacing,
+    addSpacing,
+    applyCase,
+    toggleBullets,
+    toggleNumbering,
+    setBullet,
+    setNumberFormat,
+    restartNumbering,
+    multilevel,
+    sortList,
+    setShading,
+    setBorder,
+    copyFormat,
+    pasteFormat,
+    hasSample: !!sample,
+    lineHeightOf,
+    selectedParagraph,
+  };
+};

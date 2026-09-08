@@ -1,15 +1,32 @@
+import { useEffect, useState } from 'react';
 import Icon from '@/components/ui/icon';
 
 export const RibbonGroup = ({
   title,
   children,
+  onDialog,
 }: {
   title: string;
   children: React.ReactNode;
+  /** Уголок справа от названия группы открывает подробное окно настроек */
+  onDialog?: () => void;
 }) => (
   <div className="win-group">
     <div className="flex flex-1 items-center gap-1">{children}</div>
-    <div className="win-group-title">{title}</div>
+    <div className="win-group-title flex items-center justify-center gap-1">
+      <span>{title}</span>
+      {onDialog && (
+        <button
+          type="button"
+          title={`${title}: окно настроек`}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onDialog}
+          className="flex h-[13px] w-[13px] items-center justify-center rounded-[2px] hover:bg-[hsl(var(--win-hover))]"
+        >
+          <Icon name="CornerDownRight" size={9} />
+        </button>
+      )}
+    </div>
   </div>
 );
 
@@ -211,6 +228,135 @@ export const SpinBox = ({
     </div>
   </div>
 );
+
+/** Кнопка ленты с выпадающим списком команд */
+export const Menu = ({
+  icon,
+  title,
+  items,
+  active,
+  width = 210,
+}: {
+  icon: string;
+  title: string;
+  items: { label: string; run: () => void; hint?: string }[];
+  active?: boolean;
+  width?: number;
+}) => {
+  const [open, setOpen] = useState(false);
+
+  /* клик мимо меню закрывает его */
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('mousedown', close);
+    return () => window.removeEventListener('mousedown', close);
+  }, [open]);
+
+  return (
+    <div className="relative" onMouseDown={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        title={title}
+        data-active={active ? 'true' : 'false'}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setOpen((v) => !v)}
+        className="win-btn h-[22px] gap-0.5 px-1"
+      >
+        <Icon name={icon} size={15} />
+        <Icon name="ChevronDown" size={9} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0 top-full z-50 mt-[2px] rounded-[3px] border border-[hsl(var(--win-ribbon-border))] bg-white py-1 shadow-lg"
+          style={{ width }}
+        >
+          {items.map((it) => (
+            <button
+              key={it.label}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setOpen(false);
+                it.run();
+              }}
+              className="flex w-full items-center justify-between px-3 py-[5px] text-left text-[12px] hover:bg-[hsl(var(--win-hover))]"
+            >
+              <span>{it.label}</span>
+              {it.hint && (
+                <span className="text-[10px] text-slate-500">{it.hint}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Кнопка с раздельными половинами: слева действие, справа стрелка
+ * с дополнительными вариантами — так устроены списки в Word.
+ */
+export const SplitBtn = ({
+  icon,
+  title,
+  onClick,
+  active,
+  children,
+  width = 190,
+}: {
+  icon: string;
+  title: string;
+  onClick: () => void;
+  active?: boolean;
+  /** Содержимое выпадающей части */
+  children: (close: () => void) => React.ReactNode;
+  width?: number;
+}) => {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('mousedown', close);
+    return () => window.removeEventListener('mousedown', close);
+  }, [open]);
+
+  return (
+    <div className="relative flex" onMouseDown={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        title={title}
+        data-active={active ? 'true' : 'false'}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={onClick}
+        className="win-btn h-[22px] rounded-r-none px-1"
+      >
+        <Icon name={icon} size={15} />
+      </button>
+      <button
+        type="button"
+        title={`${title}: варианты`}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setOpen((v) => !v)}
+        className="win-btn h-[22px] rounded-l-none px-0"
+      >
+        <Icon name="ChevronDown" size={9} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0 top-full z-50 mt-[2px] rounded-[3px] border border-[hsl(var(--win-ribbon-border))] bg-white p-2 shadow-lg"
+          style={{ width }}
+        >
+          {children(() => setOpen(false))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const VStack = ({ children }: { children: React.ReactNode }) => (
   <div className="flex flex-col gap-[2px]">{children}</div>
