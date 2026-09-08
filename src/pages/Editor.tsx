@@ -21,6 +21,7 @@ import ParagraphDialog from '@/components/editor/ParagraphDialog';
 import { useFormat } from '@/hooks/use-format';
 import { useTables } from '@/hooks/use-tables';
 import { useTabs } from '@/hooks/use-tabs';
+import { useBreaks } from '@/hooks/use-breaks';
 import TabsDialog from '@/components/editor/TabsDialog';
 import TableDialog from '@/components/editor/TableDialog';
 import StyleDialog from '@/components/editor/StyleDialog';
@@ -75,6 +76,7 @@ const Editor = () => {
   const [stats, setStats] = useState({ words: 0, chars: 0, pages: 1 });
   /* ссылка на пересчёт табуляции — хук создаётся ниже */
   const tabsRef = useRef<(() => void) | null>(null);
+  const breaksRef = useRef<(() => void) | null>(null);
   /* колонтитулы и номера страниц */
   const [furniture, setFurniture] = useState<PageFurniture>(DEFAULT_FURNITURE);
   const [furnitureOpen, setFurnitureOpen] = useState(false);
@@ -173,10 +175,11 @@ const Editor = () => {
   const { check: checkDirty, markSaved } = guardApi;
 
   const handleInput = useCallback(() => {
+    /* сперва растягиваем разрывы — от них зависит число страниц */
+    breaksRef.current?.();
+    tabsRef.current?.();
     recount();
     checkDirty();
-    /* текст у позиций табуляции подравнивается на ходу */
-    tabsRef.current?.();
   }, [recount, checkDirty]);
 
   useEffect(() => {
@@ -257,6 +260,15 @@ const Editor = () => {
     notify: (title, description) => toast({ title, description }),
   });
 
+  const breaks = useBreaks({
+    editorRef,
+    exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+    contentHeight:
+      (setup.landscape ? PAGE_WIDTH : PAGE_HEIGHT) - setup.margin * CM * 2,
+  });
+
   const tabs = useTabs({
     editorRef,
     exec,
@@ -265,6 +277,7 @@ const Editor = () => {
   });
 
   tabsRef.current = tabs.realign;
+  breaksRef.current = breaks.relayout;
 
   const tables = useTables({
     editorRef,
@@ -705,6 +718,9 @@ h1,h2,h3{page-break-after:avoid}
         onSort={tables.sort}
         onSum={tables.sum}
         onHeaderFooter={openFurniture}
+        onBreak={breaks.insert}
+        onRemoveBreak={breaks.removeOne}
+        onRemoveAllBreaks={breaks.removeAll}
         styles={docStyles.styles}
         activeStyle={docStyles.activeId}
         onStyleApply={docStyles.apply}
@@ -887,6 +903,8 @@ h1,h2,h3{page-break-after:avoid}
           zoom={zoom}
           onZoom={setZoom}
           savedAt={savedAt}
+          section={breaks.section}
+          sections={breaks.sections}
         />
       )}
 

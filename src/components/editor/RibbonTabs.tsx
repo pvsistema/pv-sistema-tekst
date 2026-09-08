@@ -10,6 +10,8 @@ export interface TabActions {
   zoom: number;
   /** Открыть окно колонтитулов */
   onHeaderFooter?: (part: 'header' | 'footer') => void;
+  /** Вставить разрыв страницы, колонки или раздела */
+  onBreak?: (kind: import('@/lib/breaks').BreakKind) => void;
 }
 
 export const RibbonHelp = (p: TabActions) => (

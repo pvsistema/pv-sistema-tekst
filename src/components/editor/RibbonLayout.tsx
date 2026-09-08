@@ -1,4 +1,6 @@
-import { RibbonGroup, BigCmd, SmallCmd, Stack, SpinBox } from './RibbonControls';
+import { RibbonGroup, BigCmd, SmallCmd, Stack, SpinBox, Menu } from './RibbonControls';
+import type { BreakKind } from '@/lib/breaks';
+import { BREAK_OPTIONS } from '@/lib/breaks';
 import type { TabActions } from './RibbonTabs';
 
 export interface PageSetup {
@@ -28,6 +30,10 @@ export const DEFAULT_SETUP: PageSetup = {
 export interface LayoutProps extends TabActions {
   setup: PageSetup;
   onSetup: (patch: Partial<PageSetup>) => void;
+  /** Разрывы страниц, колонок и разделов */
+  onBreak?: (kind: BreakKind) => void;
+  onRemoveBreak?: () => void;
+  onRemoveAllBreaks?: () => void;
 }
 
 const MARGIN_CYCLE = [2, 1, 2.54, 3];
@@ -78,12 +84,37 @@ const RibbonLayout = (p: LayoutProps) => {
           onClick={nextColumns}
         />
         <Stack width={146}>
-          <SmallCmd
-            icon="SeparatorHorizontal"
-            label="Разрывы"
-            caret
-            onClick={() => p.onCommand('insertHorizontalRule')}
-          />
+          <div className="flex h-[20px] items-center">
+            <Menu
+              icon="SeparatorHorizontal"
+              title="Разрывы страниц и разделов"
+              label="Разрывы"
+              width={250}
+              items={[
+                ...BREAK_OPTIONS.map((o, i) => ({
+                  label: o.label,
+                  hint: o.hint,
+                  group:
+                    i === 0
+                      ? 'Разрывы страниц'
+                      : o.section && !BREAK_OPTIONS[i - 1].section
+                        ? 'Разрывы разделов'
+                        : undefined,
+                  run: () => p.onBreak?.(o.kind),
+                })),
+                {
+                  label: 'Удалить разрыв',
+                  hint: 'Тот, что стоит перед курсором',
+                  group: 'Правка',
+                  run: () => p.onRemoveBreak?.(),
+                },
+                {
+                  label: 'Удалить все разрывы',
+                  run: () => p.onRemoveAllBreaks?.(),
+                },
+              ]}
+            />
+          </div>
           <SmallCmd
             icon="ListOrdered"
             label="Номера строк"

@@ -235,11 +235,20 @@ export const Menu = ({
   title,
   items,
   active,
+  label,
   width = 210,
 }: {
   icon: string;
   title: string;
-  items: { label: string; run: () => void; hint?: string }[];
+  /** Подпись рядом со значком — для кнопок в столбце */
+  label?: string;
+  items: {
+    label: string;
+    run: () => void;
+    hint?: string;
+    /** Заголовок группы перед пунктом — как в меню «Разрывы» */
+    group?: string;
+  }[];
   active?: boolean;
   width?: number;
 }) => {
@@ -261,9 +270,16 @@ export const Menu = ({
         data-active={active ? 'true' : 'false'}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => setOpen((v) => !v)}
-        className="win-btn h-[22px] gap-0.5 px-1"
+        className={`win-btn h-[22px] gap-0.5 px-1 ${
+          label ? 'w-full justify-start' : ''
+        }`}
       >
         <Icon name={icon} size={15} />
+        {label && (
+          <span className="ml-1 flex-1 text-left text-[11px] leading-none">
+            {label}
+          </span>
+        )}
         <Icon name="ChevronDown" size={9} />
       </button>
 
@@ -273,21 +289,29 @@ export const Menu = ({
           style={{ width }}
         >
           {items.map((it) => (
-            <button
-              key={it.label}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                setOpen(false);
-                it.run();
-              }}
-              className="flex w-full items-center justify-between px-3 py-[5px] text-left text-[12px] hover:bg-[hsl(var(--win-hover))]"
-            >
-              <span>{it.label}</span>
-              {it.hint && (
-                <span className="text-[10px] text-slate-500">{it.hint}</span>
+            <div key={it.label}>
+              {it.group && (
+                <p className="mt-1 border-t border-[hsl(var(--win-ribbon-border))] px-3 pb-[2px] pt-1.5 text-[10px] font-semibold uppercase text-slate-500">
+                  {it.group}
+                </p>
               )}
-            </button>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setOpen(false);
+                  it.run();
+                }}
+                className="flex w-full flex-col items-start px-3 py-[5px] text-left text-[12px] hover:bg-[hsl(var(--win-hover))]"
+              >
+                <span>{it.label}</span>
+                {it.hint && (
+                  <span className="text-[10px] leading-tight text-slate-500">
+                    {it.hint}
+                  </span>
+                )}
+              </button>
+            </div>
           ))}
         </div>
       )}

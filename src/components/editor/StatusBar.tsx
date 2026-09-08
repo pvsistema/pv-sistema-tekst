@@ -8,6 +8,9 @@ interface Props {
   zoom: number;
   onZoom: (v: number) => void;
   savedAt: number | null;
+  /** Раздел, в котором стоит курсор */
+  section?: number;
+  sections?: number;
 }
 
 const StatusBar = ({
@@ -18,6 +21,8 @@ const StatusBar = ({
   zoom,
   onZoom,
   savedAt,
+  section = 1,
+  sections = 1,
 }: Props) => (
   <div
     className="flex h-[22px] shrink-0 items-center gap-4 px-3 text-[11px] text-white"
@@ -26,6 +31,11 @@ const StatusBar = ({
     <span>
       Страница {currentPage} из {pages}
     </span>
+    {sections > 1 && (
+      <span className="hidden sm:inline">
+        Раздел {section} из {sections}
+      </span>
+    )}
     <span>Число слов: {words}</span>
     <span className="hidden sm:inline">Символов: {chars}</span>
     <span className="hidden md:inline">русский</span>

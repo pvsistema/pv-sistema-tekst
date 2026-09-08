@@ -167,7 +167,7 @@ const RibbonInsert = (p: TabActions) => {
         <BigCmd
           icon="SeparatorHorizontal"
           lines={['Разрыв', 'страницы']}
-          onClick={() => p.onCommand('insertHorizontalRule')}
+          onClick={() => p.onBreak?.('page')}
           width={58}
         />
       </RibbonGroup>

@@ -287,6 +287,35 @@ const bodyFromHtml = (root: Element): string => {
       return;
     }
 
+    /* разрыв страницы, колонки или раздела */
+    const breakKind = el.getAttribute?.('data-break');
+    if (breakKind) {
+      if (breakKind === 'column') {
+        out.push('<w:p><w:r><w:br w:type="column"/></w:r></w:p>');
+      } else if (breakKind === 'page') {
+        out.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
+      } else {
+        /* разрыв раздела задаётся свойствами абзаца */
+        const type =
+          breakKind === 'section-continuous'
+            ? 'continuous'
+            : breakKind === 'section-even'
+              ? 'evenPage'
+              : breakKind === 'section-odd'
+                ? 'oddPage'
+                : 'nextPage';
+
+        out.push(
+          '<w:p><w:pPr><w:sectPr>' +
+            `<w:type w:val="${type}"/>` +
+            '<w:pgSz w:w="11906" w:h="16838"/>' +
+            '<w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1701" w:header="708" w:footer="708" w:gutter="0"/>' +
+            '</w:sectPr></w:pPr></w:p>',
+        );
+      }
+      return;
+    }
+
     /* уровень заголовка берём из применённого стиля, иначе из тега */
     const level = Number(el.getAttribute('data-level'));
     const heading = level || Number(tag.match(/^H([1-6])$/)?.[1] ?? 0);

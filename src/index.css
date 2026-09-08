@@ -345,6 +345,46 @@
     content: "________________________________________________";
   }
 
+  /* разрывы страниц и разделов */
+  .pv-page .pv-break {
+    @apply relative my-0 select-none;
+  }
+
+  /* сама метка разрыва видна только при показе знаков форматирования */
+  .pv-page .pv-break > span {
+    @apply pointer-events-none absolute inset-x-0 top-0 hidden text-center text-[10px] leading-none text-[hsl(210_50%_55%)];
+  }
+
+  .pv-page.pv-marks .pv-break > span {
+    @apply block;
+  }
+
+  .pv-page.pv-marks .pv-break {
+    @apply border-t border-dashed border-[hsl(210_50%_65%)];
+  }
+
+  .pv-page.pv-marks .pv-break > span {
+    @apply -top-[6px] bg-white px-1;
+  }
+
+  /* разрыв колонки просто переносит текст в следующую колонку */
+  .pv-page .pv-break[data-break="column"] {
+    break-after: column;
+    @apply block h-0;
+  }
+
+  @media print {
+    .pv-page .pv-break[data-break="page"],
+    .pv-page .pv-break[data-break^="section"] {
+      break-after: page;
+      @apply h-0 border-0;
+    }
+
+    .pv-page .pv-break > span {
+      @apply hidden;
+    }
+  }
+
   /* режим «Структура» вкладки «Вид» */
   .pv-page.pv-outline p,
   .pv-page.pv-outline li {
