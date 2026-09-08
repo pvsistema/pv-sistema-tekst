@@ -38,6 +38,8 @@ import { useInserts } from '@/hooks/use-inserts';
 import { useEquation } from '@/hooks/use-equation';
 import { useCharts } from '@/hooks/use-charts';
 import ChartDialog from '@/components/editor/ChartDialog';
+import { useTemplates } from '@/hooks/use-templates';
+import SaveTemplateDialog from '@/components/editor/SaveTemplateDialog';
 import SymbolDialog from '@/components/editor/SymbolDialog';
 import {
   DateTimeDialog,
@@ -287,6 +289,11 @@ const Editor = () => {
     notify: (title, description) => toast({ title, description }),
   });
 
+  const templates = useTemplates({
+    editorRef,
+    notify: (title, description) => toast({ title, description }),
+  });
+
   const charts = useCharts({
     editorRef,
     exec,
@@ -463,6 +470,13 @@ const Editor = () => {
     guardApi.guard('new', () => {
       createDocument();
       toast({ title: 'Создан новый документ' });
+    });
+
+  /* документ по своему бланку — как «Создать → Мои шаблоны» */
+  const handleUserTemplate = (t: { title: string; html: string }) =>
+    guardApi.guard('new', () => {
+      importDocument(t.title, t.html);
+      toast({ title: 'Документ создан', description: `Шаблон «${t.title}»` });
     });
 
   const handleTemplate = (t: DocTemplate) =>
@@ -1084,6 +1098,10 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onSelect={(id) => guardApi.guard('switch', () => setActiveId(id))}
         onRemove={removeDocument}
         onNew={handleNew}
+        userTemplates={templates.list}
+        onUserTemplate={handleUserTemplate}
+        onRemoveTemplate={templates.remove}
+        onSaveTemplate={() => templates.setSaveOpen(true)}
         onTemplate={handleTemplate}
         pinned={pinned}
         onTogglePin={togglePin}
@@ -1103,6 +1121,13 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
           setFileMenu(false);
           setOptionsOpen(true);
         }}
+      />
+
+      <SaveTemplateDialog
+        open={templates.saveOpen}
+        docName={active?.title}
+        onClose={() => templates.setSaveOpen(false)}
+        onSave={templates.save}
       />
 
       <ChartDialog

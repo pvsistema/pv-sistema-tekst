@@ -100,6 +100,95 @@ const TemplateThumb = ({ kind }: { kind: DocTemplate['thumb'] }) => {
       </div>
     );
 
+  /* бланк письма: шапка организации, адресат справа, место подписи */
+  if (kind === 'blank-form')
+    return (
+      <div className={base}>
+        <span className="mx-auto mb-[1px] block h-[3px] w-[62%] rounded-full bg-[#404040]" />
+        <span className="mx-auto mb-[2px] block h-[2px] w-[46%] rounded-full bg-[#c9c9c9]" />
+        <span className="mb-[3px] block h-[1px] w-full bg-[#7f7f7f]" />
+        <span className="mb-[3px] flex flex-col items-end gap-[1px]">
+          <Line w={50} />
+          <Line w={42} />
+        </span>
+        <div className="flex flex-1 flex-col gap-[2px]">
+          {[96, 90, 84].map((w, i) => (
+            <Line key={i} w={w} />
+          ))}
+        </div>
+        <span className="mt-[3px] flex justify-between gap-1">
+          <Line w={38} c="#a6a6a6" />
+          <Line w={30} c="#a6a6a6" />
+        </span>
+      </div>
+    );
+
+  /* служебная записка: шапка справа и заголовок по центру */
+  if (kind === 'memo')
+    return (
+      <div className={base}>
+        <span className="mb-[3px] flex flex-col items-end gap-[1px]">
+          <Line w={52} />
+          <Line w={44} />
+          <Line w={38} />
+        </span>
+        <span className="mx-auto mb-[3px] block h-[3px] w-[58%] rounded-full bg-[#404040]" />
+        <div className="flex flex-1 flex-col gap-[2px]">
+          {[94, 88, 92].map((w, i) => (
+            <Line key={i} w={w} />
+          ))}
+        </div>
+        <span className="mt-[3px] flex justify-end">
+          <Line w={46} c="#a6a6a6" />
+        </span>
+      </div>
+    );
+
+  /* отчёт: заголовок, разделы и таблица */
+  if (kind === 'report')
+    return (
+      <div className={base}>
+        <span className="mx-auto mb-[1px] block h-[3px] w-[66%] rounded-full bg-[#2f5496]" />
+        <span className="mx-auto mb-[3px] block h-[2px] w-[40%] rounded-full bg-[#c9c9c9]" />
+        <Line w={44} c="#2f5496" />
+        <span className="mb-[2px] mt-[2px] flex flex-col gap-[1px]">
+          <Line w={92} />
+          <Line w={86} />
+        </span>
+        <span className="mt-auto grid grid-cols-3 gap-[1px]">
+          {Array.from({ length: 9 }, (_, i) => (
+            <span
+              key={i}
+              className="h-[4px]"
+              style={{ background: i < 3 ? '#d9e2f3' : '#e8e8e8' }}
+            />
+          ))}
+        </span>
+      </div>
+    );
+
+  /* приказ: крупный заголовок и нумерованный список */
+  if (kind === 'order')
+    return (
+      <div className={base}>
+        <span className="mx-auto mb-[1px] block h-[2px] w-[50%] rounded-full bg-[#c9c9c9]" />
+        <span className="mx-auto mb-[3px] block h-[4px] w-[40%] rounded-full bg-[#404040]" />
+        <span className="mb-[2px] flex flex-col gap-[1px]">
+          <Line w={88} />
+          <Line w={70} />
+        </span>
+        <Line w={44} c="#404040" />
+        <span className="mt-[2px] flex flex-1 flex-col gap-[2px] pl-[6px]">
+          {[86, 78].map((w, i) => (
+            <Line key={i} w={w} />
+          ))}
+        </span>
+        <span className="mt-[3px] flex justify-end">
+          <Line w={42} c="#a6a6a6" />
+        </span>
+      </div>
+    );
+
   if (kind === 'letter')
     return (
       <div className={base}>

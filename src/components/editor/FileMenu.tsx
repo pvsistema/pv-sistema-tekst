@@ -2,6 +2,8 @@ import { useState } from 'react';
 import Icon from '@/components/ui/icon';
 import type { PvDocument } from '@/hooks/use-documents';
 import { TEMPLATES, DocTemplate } from './fileTemplates';
+import type { UserTemplate } from '@/lib/templates';
+import { templateDate } from '@/lib/templates';
 import TemplateThumb from './TemplateThumb';
 import PrintPane from './PrintPane';
 import type { DocTheme } from './RibbonDesign';
@@ -36,6 +38,11 @@ interface Props {
   onPrintSetup: (patch: Partial<import('@/lib/print').PrintSetup>) => void;
   getHtml: () => string;
   onOptions: () => void;
+  /** Свои шаблоны из папки «Шаблоны» */
+  userTemplates?: UserTemplate[];
+  onUserTemplate?: (t: UserTemplate) => void;
+  onRemoveTemplate?: (id: string) => void;
+  onSaveTemplate?: () => void;
 }
 
 const NAV = [
@@ -373,6 +380,69 @@ const FileMenu = (p: Props) => {
           <>
             <SectionTitle>Создать</SectionTitle>
             {gallery}
+
+            <div className="mt-7 flex items-center gap-3">
+              <span className="text-[15px] text-[hsl(0_0%_25%)]">
+                Мои шаблоны
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  p.onSaveTemplate?.();
+                  p.onClose();
+                }}
+                className="flex items-center gap-1 text-[12px] text-[hsl(var(--win-title))] hover:underline"
+              >
+                <Icon name="Plus" size={12} />
+                Сохранить текущий документ как шаблон
+              </button>
+            </div>
+
+            {p.userTemplates?.length ? (
+              <div className="mt-3 flex max-w-[1220px] flex-wrap gap-x-[24px] gap-y-5">
+                {p.userTemplates.map((t) => (
+                  <div key={t.id} className="group w-[128px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        p.onUserTemplate?.(t);
+                        p.onClose();
+                      }}
+                      className="w-full text-left"
+                    >
+                      <div className="relative h-[86px] w-[100px] overflow-hidden border border-[hsl(var(--win-ribbon-border))] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.12)] transition-shadow group-hover:border-[hsl(var(--win-title))] group-hover:shadow-[0_2px_6px_rgba(0,0,0,0.2)]">
+                        <div
+                          className="pv-page origin-top-left scale-[0.16] p-3"
+                          style={{ width: 625, pointerEvents: 'none' }}
+                          dangerouslySetInnerHTML={{ __html: t.html }}
+                        />
+                      </div>
+                      <div className="mt-2 truncate text-[12px] text-[hsl(0_0%_25%)] group-hover:text-[hsl(var(--win-title))]">
+                        {t.title}
+                      </div>
+                      <div className="truncate text-[10px] text-[hsl(0_0%_55%)]">
+                        {t.hint || templateDate(t.saved)}
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => p.onRemoveTemplate?.(t.id)}
+                      className="mt-[2px] flex items-center gap-1 text-[10px] text-[hsl(0_0%_55%)] opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100"
+                    >
+                      <Icon name="Trash2" size={10} />
+                      Удалить
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 max-w-[560px] text-[12px] leading-relaxed text-[hsl(0_0%_45%)]">
+                Здесь появятся ваши бланки. Подготовьте документ с постоянной
+                частью — шапкой организации, реквизитами, местом для подписи —
+                и сохраните его как шаблон.
+              </p>
+            )}
           </>
         )}
 
@@ -403,6 +473,14 @@ const FileMenu = (p: Props) => {
               <FlatBtn icon="FileType2" label="Документ Word (.docx)" onClick={p.onExportDoc} />
               <FlatBtn icon="Code" label="Веб-страница (.html)" onClick={p.onExportHtml} />
               <FlatBtn icon="FileDown" label="PDF (через печать)" onClick={p.onPrint} />
+              <FlatBtn
+                icon="LayoutTemplate"
+                label="Шаблон документа"
+                onClick={() => {
+                  p.onSaveTemplate?.();
+                  p.onClose();
+                }}
+              />
             </div>
           </>
         )}

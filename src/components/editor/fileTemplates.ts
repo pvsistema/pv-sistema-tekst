@@ -1,3 +1,10 @@
+import {
+  LETTER_TEMPLATE,
+  MEMO_TEMPLATE,
+  ORDER_TEMPLATE,
+  REPORT_TEMPLATE,
+} from '@/lib/templates';
+
 export interface DocTemplate {
   id: string;
   title: string;
@@ -11,7 +18,11 @@ export interface DocTemplate {
     | 'chrono'
     | 'chrono2'
     | 'letter'
-    | 'letter2';
+    | 'letter2'
+    | 'blank-form'
+    | 'memo'
+    | 'report'
+    | 'order';
   html: string;
 }
 
@@ -95,5 +106,29 @@ export const TEMPLATES: DocTemplate[] = [
     title: 'Сопроводительное письмо (современное)',
     thumb: 'letter2',
     html: COVER,
+  },
+  {
+    id: 'business-letter',
+    title: 'Бланк делового письма',
+    thumb: 'blank-form',
+    html: LETTER_TEMPLATE,
+  },
+  {
+    id: 'memo',
+    title: 'Служебная записка',
+    thumb: 'memo',
+    html: MEMO_TEMPLATE,
+  },
+  {
+    id: 'report',
+    title: 'Отчёт о проделанной работе',
+    thumb: 'report',
+    html: REPORT_TEMPLATE,
+  },
+  {
+    id: 'order',
+    title: 'Приказ',
+    thumb: 'order',
+    html: ORDER_TEMPLATE,
   },
 ];
