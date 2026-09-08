@@ -16,6 +16,7 @@ const WRAP_HINTS: Record<WrapMode, string> = {
 import type { TabActions } from './RibbonTabs';
 
 export interface PageSetup {
+  /** Общее поле — оставлено для старых документов */
   margin: number;
   landscape: boolean;
   columns: number;
@@ -25,6 +26,20 @@ export interface PageSetup {
   spaceAfter: number;
   lineNumbers: boolean;
   hyphenation: boolean;
+  /** Размер бумаги в сантиметрах */
+  paperWidth: number;
+  paperHeight: number;
+  /** Поля по сторонам, в сантиметрах */
+  marginTop: number;
+  marginBottom: number;
+  marginLeft: number;
+  marginRight: number;
+  /** Переплёт — запас под подшивку */
+  gutter: number;
+  /** Расстояние между колонками, в сантиметрах */
+  columnGap: number;
+  /** Разделитель между колонками */
+  columnRule: boolean;
 }
 
 export const DEFAULT_SETUP: PageSetup = {
@@ -37,6 +52,15 @@ export const DEFAULT_SETUP: PageSetup = {
   spaceAfter: 8,
   lineNumbers: false,
   hyphenation: false,
+  paperWidth: 21,
+  paperHeight: 29.7,
+  marginTop: 2,
+  marginBottom: 2,
+  marginLeft: 2,
+  marginRight: 2,
+  gutter: 0,
+  columnGap: 1.25,
+  columnRule: false,
 };
 
 export interface LayoutProps extends TabActions {
@@ -49,6 +73,8 @@ export interface LayoutProps extends TabActions {
   /** Обтекание и порядок наложения объектов */
   onWrap?: (wrap: WrapMode) => void;
   onOrder?: (dir: 'front' | 'back') => void;
+  /** Окно «Параметры страницы» на нужной вкладке */
+  onPageSetup?: (tab?: 'margins' | 'paper' | 'layout') => void;
 }
 
 const MARGIN_CYCLE = [2, 1, 2.54, 3];
@@ -75,7 +101,7 @@ const RibbonLayout = (p: LayoutProps) => {
           lines={['Поля']}
           caret
           width={44}
-          onClick={nextMargin}
+          onClick={() => p.onPageSetup?.('margins') ?? nextMargin()}
         />
         <BigCmd
           icon={s.landscape ? 'RectangleHorizontal' : 'RectangleVertical'}
@@ -89,7 +115,7 @@ const RibbonLayout = (p: LayoutProps) => {
           lines={['Размер']}
           caret
           width={50}
-          onClick={() => p.onSetup({ margin: 2 })}
+          onClick={() => p.onPageSetup?.('paper')}
         />
         <BigCmd
           icon="Columns3"

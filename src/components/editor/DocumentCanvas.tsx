@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import type { DocTheme } from './RibbonDesign';
 import type { PageSetup } from './RibbonLayout';
 import type { PageFurniture } from '@/lib/page-numbers';
+import { pagePixels } from '@/lib/page-setup';
 import type { PageBorderSetup } from '@/lib/borders';
 import PageFurnitureLayer from './PageFurnitureLayer';
 
@@ -61,10 +62,23 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
   ) => {
     const scale = zoom / 100;
     const flat = viewMode === 'web' || viewMode === 'draft' || viewMode === 'outline';
-    const width = setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH;
-    const height = setup.landscape ? PAGE_WIDTH : PAGE_HEIGHT;
-    const pad = flat ? 24 : setup.margin * CM;
-    const contentHeight = height - setup.margin * CM * 2;
+    /* размер листа берём из параметров страницы */
+    const paper = pagePixels(
+      { width: setup.paperWidth, height: setup.paperHeight },
+      setup.landscape,
+    );
+
+    const width = paper.width;
+    const height = paper.height;
+
+    /* поля по сторонам; переплёт добавляется слева */
+    const padTop = flat ? 24 : setup.marginTop * CM;
+    const padBottom = flat ? 24 : setup.marginBottom * CM;
+    const padLeft = flat ? 24 : (setup.marginLeft + setup.gutter) * CM;
+    const padRight = flat ? 24 : setup.marginRight * CM;
+
+    const pad = padTop;
+    const contentHeight = height - padTop - padBottom;
 
     /* веб-документ, черновик и структура — единая лента без листа */
     if (flat)
@@ -211,15 +225,19 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
                 style={
                   {
                     minHeight: height,
-                    padding: pad,
-                    paddingLeft: pad + setup.indentLeft * CM,
-                    paddingRight: pad + setup.indentRight * CM,
+                    paddingTop: padTop,
+                    paddingBottom: padBottom,
+                    paddingLeft: padLeft + setup.indentLeft * CM,
+                    paddingRight: padRight + setup.indentRight * CM,
                     fontFamily: theme.bodyFont,
                     color: theme.bodyColor,
                     fontSize: 15,
                     lineHeight: 1.5,
                     columnCount: setup.columns,
-                    columnGap: 32,
+                    columnGap: setup.columnGap * CM,
+                    columnRule: setup.columnRule
+                      ? '1px solid #b4b4b4'
+                      : undefined,
                     border:
                       pageBorderSetup?.enabled && !pageBorderSetup.art
                         ? `${pageBorderSetup.width}px ${pageBorderSetup.style} ${pageBorderSetup.color}`

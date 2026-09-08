@@ -38,6 +38,7 @@ import { useInserts } from '@/hooks/use-inserts';
 import { useEquation } from '@/hooks/use-equation';
 import { useCharts } from '@/hooks/use-charts';
 import ChartDialog from '@/components/editor/ChartDialog';
+import PageSetupDialog from '@/components/editor/PageSetupDialog';
 import { useTemplates } from '@/hooks/use-templates';
 import SaveTemplateDialog from '@/components/editor/SaveTemplateDialog';
 import SymbolDialog from '@/components/editor/SymbolDialog';
@@ -288,6 +289,8 @@ const Editor = () => {
     recount,
     notify: (title, description) => toast({ title, description }),
   });
+
+  const [pageSetupOpen, setPageSetupOpen] = useState(false);
 
   const templates = useTemplates({
     editorRef,
@@ -620,6 +623,15 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
       numberAlign: (furniture.numberPosition.split('-')[1] ??
         'center') as 'left' | 'center' | 'right',
       pageBorder: borders.pageBorder,
+    }, {
+      paperWidth: setup.paperWidth,
+      paperHeight: setup.paperHeight,
+      landscape: setup.landscape,
+      marginTop: setup.marginTop,
+      marginBottom: setup.marginBottom,
+      marginLeft: setup.marginLeft,
+      marginRight: setup.marginRight,
+      gutter: setup.gutter,
     });
     const blob = new Blob([bytes.slice().buffer], {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -926,6 +938,7 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onPageBorderDialog={borders.openPage}
         setup={setup}
         onSetup={patchSetup}
+        onPageSetup={() => setPageSetupOpen(true)}
         citeStyle={refs.citeStyle}
         onCiteStyle={refs.setCiteStyle}
         onToc={refs.buildToc}
@@ -1121,6 +1134,13 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
           setFileMenu(false);
           setOptionsOpen(true);
         }}
+      />
+
+      <PageSetupDialog
+        open={pageSetupOpen}
+        setup={setup}
+        onClose={() => setPageSetupOpen(false)}
+        onApply={patchSetup}
       />
 
       <SaveTemplateDialog

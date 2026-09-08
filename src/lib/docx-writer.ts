@@ -690,10 +690,26 @@ const furniturePart = (
  * Собирает файл .docx из содержимого редактора.
  * Открывается в Word, LibreOffice и Google Документах без потери оформления.
  */
+/** Параметры листа для Word: размеры и поля в сантиметрах */
+export interface DocxPage {
+  paperWidth: number;
+  paperHeight: number;
+  landscape: boolean;
+  marginTop: number;
+  marginBottom: number;
+  marginLeft: number;
+  marginRight: number;
+  gutter: number;
+}
+
+/** Сантиметры в твипы — внутренние единицы Word */
+const twips = (cm: number) => Math.round(cm * 567);
+
 export const htmlToDocx = (
   html: string,
   title: string,
   furniture?: DocxFurniture,
+  page?: DocxPage,
 ): Uint8Array => {
   const holder = document.createElement('div');
   holder.innerHTML = html;
@@ -736,8 +752,35 @@ export const htmlToDocx = (
     })() +
     (hasHeader ? '<w:headerReference w:type="default" r:id="rIdHdr"/>' : '') +
     (hasFooter ? '<w:footerReference w:type="default" r:id="rIdFtr"/>' : '') +
-    `<w:pgSz w:w="11906" w:h="16838"/>` +
-    `<w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1701" w:header="708" w:footer="708" w:gutter="0"/>` +
+    (() => {
+      /* без параметров печатаем на A4 с обычными полями */
+      if (!page) {
+        return (
+          '<w:pgSz w:w="11906" w:h="16838"/>' +
+          '<w:pgMar w:top="1134" w:right="850" w:bottom="1134" ' +
+          'w:left="1701" w:header="708" w:footer="708" w:gutter="0"/>'
+        );
+      }
+
+      const w = twips(
+        page.landscape ? page.paperHeight : page.paperWidth,
+      );
+      const h = twips(
+        page.landscape ? page.paperWidth : page.paperHeight,
+      );
+
+      return (
+        `<w:pgSz w:w="${w}" w:h="${h}"` +
+        (page.landscape ? ' w:orient="landscape"' : '') +
+        '/>' +
+        `<w:pgMar w:top="${twips(page.marginTop)}" ` +
+        `w:right="${twips(page.marginRight)}" ` +
+        `w:bottom="${twips(page.marginBottom)}" ` +
+        `w:left="${twips(page.marginLeft)}" ` +
+        `w:header="708" w:footer="708" ` +
+        `w:gutter="${twips(page.gutter)}"/>`
+      );
+    })() +
     (f?.differentFirst ? '<w:titlePg/>' : '') +
     `</w:sectPr></w:body></w:document>`;
 
