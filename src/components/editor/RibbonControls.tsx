@@ -37,12 +37,18 @@ export const SmallBtn = ({
   onClick,
   active,
   label,
+  letter,
+  letterStyle,
 }: {
-  icon: string;
+  icon?: string;
   title: string;
   onClick?: () => void;
   active?: boolean;
   label?: string;
+  /** Буква вместо значка — как Ж, К и Ч в русском Word */
+  letter?: string;
+  /** Как рисовать букву: полужирной, курсивом или подчёркнутой */
+  letterStyle?: 'bold' | 'italic' | 'underline' | 'strike';
 }) => (
   <button
     type="button"
@@ -52,7 +58,25 @@ export const SmallBtn = ({
     onClick={onClick}
     className="win-btn h-[22px] gap-1 px-1"
   >
-    <Icon name={icon} size={15} />
+    {letter ? (
+      <span
+        className={`w-[15px] text-center font-serif text-[14px] leading-none ${
+          letterStyle === 'bold'
+            ? 'font-bold'
+            : letterStyle === 'italic'
+              ? 'italic'
+              : letterStyle === 'underline'
+                ? 'underline underline-offset-2'
+                : letterStyle === 'strike'
+                  ? 'line-through'
+                  : ''
+        }`}
+      >
+        {letter}
+      </span>
+    ) : (
+      icon && <Icon name={icon} size={15} />
+    )}
     {label && <span className="text-[11px] leading-none">{label}</span>}
   </button>
 );

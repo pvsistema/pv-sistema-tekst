@@ -14,6 +14,7 @@ import { PASTE_MODES } from '@/lib/clipboard';
 import { PARA_SPACING_SETS } from '@/lib/doc-styles';
 import type { DocStyle } from '@/lib/doc-styles';
 import { styleCss } from '@/lib/doc-styles';
+import type { FormatState } from '@/hooks/use-format-state';
 
 const FONTS = [
   'Times New Roman',
@@ -38,6 +39,8 @@ const SIZES = ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '
 export interface RibbonHomeProps {
   onCommand: (command: string, value?: string) => void;
   fontFamily: string;
+  /* что включено там, где стоит курсор */
+  format?: FormatState;
   fontSize: string;
   onFontFamily: (v: string) => void;
   onFontSize: (v: string) => void;
@@ -167,12 +170,46 @@ const RibbonHome = (p: RibbonHomeProps) => (
           <SmallBtn icon="Eraser" title="Очистить формат" onClick={() => p.onCommand('removeFormat')} />
         </Row>
         <Row>
-          <SmallBtn icon="Bold" title="Полужирный" onClick={() => p.onCommand('bold')} />
-          <SmallBtn icon="Italic" title="Курсив" onClick={() => p.onCommand('italic')} />
-          <SmallBtn icon="Underline" title="Подчёркнутый" onClick={() => p.onCommand('underline')} />
-          <SmallBtn icon="Strikethrough" title="Зачёркнутый" onClick={() => p.onCommand('strikeThrough')} />
-          <SmallBtn icon="Subscript" title="Подстрочный" onClick={() => p.onCommand('subscript')} />
-          <SmallBtn icon="Superscript" title="Надстрочный" onClick={() => p.onCommand('superscript')} />
+          <SmallBtn
+            letter="Ж"
+            letterStyle="bold"
+            title="Полужирный (Ctrl+B)"
+            active={p.format?.bold}
+            onClick={() => p.onCommand('bold')}
+          />
+          <SmallBtn
+            letter="К"
+            letterStyle="italic"
+            title="Курсив (Ctrl+I)"
+            active={p.format?.italic}
+            onClick={() => p.onCommand('italic')}
+          />
+          <SmallBtn
+            letter="Ч"
+            letterStyle="underline"
+            title="Подчёркнутый (Ctrl+U)"
+            active={p.format?.underline}
+            onClick={() => p.onCommand('underline')}
+          />
+          <SmallBtn
+            letter="abc"
+            letterStyle="strike"
+            title="Зачёркнутый"
+            active={p.format?.strike}
+            onClick={() => p.onCommand('strikeThrough')}
+          />
+          <SmallBtn
+            icon="Subscript"
+            title="Подстрочный"
+            active={p.format?.sub}
+            onClick={() => p.onCommand('subscript')}
+          />
+          <SmallBtn
+            icon="Superscript"
+            title="Надстрочный"
+            active={p.format?.sup}
+            onClick={() => p.onCommand('superscript')}
+          />
           <label className="win-btn h-[22px] cursor-pointer px-1" title="Цвет выделения">
             <Icon name="Highlighter" size={15} />
             <input

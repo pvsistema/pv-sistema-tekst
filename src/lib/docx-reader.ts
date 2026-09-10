@@ -103,13 +103,38 @@ const imageHtml = (
 };
 
 /** Оформление одного участка текста: жирный, курсив и прочее */
-const runToHtml = (run: string, images?: Map<string, string>): string => {
+const runToHtml = (
+  run: string,
+  images?: Map<string, string>,
+  tabStops?: number[],
+): string => {
   const texts = [...run.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)]
     .map((m) => m[1])
     .join('');
 
   const breaks = /<w:br\b/.test(run) ? '<br>' : '';
-  const tabs = [...run.matchAll(/<w:tab\/>/g)].map(() => '\u00a0\u00a0\u00a0\u00a0').join('');
+  /*
+   * Табуляция — переход к заданной позиции, а не несколько пробелов:
+   * иначе линии для заполнения от руки съезжают по длине.
+   */
+  const tabCount = [...run.matchAll(/<w:tab\/>/g)].length;
+
+  const tabs = tabCount
+    ? Array.from({ length: tabCount }, (_, i) => {
+        const stop = tabStops?.[i];
+
+        /*
+         * Позиция задана в документе — доводим текст ровно до неё,
+         * отсчитывая от левого поля. Иначе берём шаг по умолчанию.
+         */
+        /* внутри — знак табуляции: он попадает в подсчёт слов, как в Word */
+        return stop !== undefined
+          ? `<span class="pv-tab" style="min-width:0;width:auto;padding-left:${trim(
+              twipsToCm(String(stop)),
+            )}cm">\t</span>`
+          : '<span class="pv-tab">\t</span>';
+      }).join('')
+    : '';
   const picture = imageHtml(run, images);
 
   if (!texts && !breaks && !tabs && !picture) return '';
@@ -333,11 +358,16 @@ const paraToHtml = (
   defaults?: DocDefaults,
   images?: Map<string, string>,
 ): string => {
-  const inner = [...para.matchAll(/<w:r(?:\s[^>]*)?>([\s\S]*?)<\/w:r>/g)]
-    .map((m) => runToHtml(m[1], images))
-    .join('');
-
   const props = para.match(/<w:pPr>([\s\S]*?)<\/w:pPr>/)?.[1] ?? '';
+
+  /* позиции табуляции, заданные для этого абзаца */
+  const tabStops = [
+    ...props.matchAll(/<w:tab\b[^>]*w:pos="(\d+)"/g),
+  ].map((m) => Number(m[1]));
+
+  const inner = [...para.matchAll(/<w:r(?:\s[^>]*)?>([\s\S]*?)<\/w:r>/g)]
+    .map((m) => runToHtml(m[1], images, tabStops))
+    .join('');
   const style = props.match(/<w:pStyle[^>]*w:val="([^"]*)"/)?.[1] ?? '';
 
   /* список задаётся либо нумерацией, либо стилем «Список» */

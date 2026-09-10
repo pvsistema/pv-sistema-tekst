@@ -36,6 +36,7 @@ import AutoCorrectDialog from '@/components/editor/AutoCorrectDialog';
 import { useShapes } from '@/hooks/use-shapes';
 import { useImageResize } from '@/hooks/use-image-resize';
 import { pagePixels } from '@/lib/page-setup';
+import { useFormatState } from '@/hooks/use-format-state';
 import { useInserts } from '@/hooks/use-inserts';
 import { useEquation } from '@/hooks/use-equation';
 import { useCharts } from '@/hooks/use-charts';
@@ -394,6 +395,9 @@ const Editor = () => {
     inserts.refreshFields();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
+
+  /* подсветка кнопок Ж-К-Ч по месту курсора */
+  const { format } = useFormatState({ editorRef });
 
   /* изменение размера картинок мышью за уголок */
   const images = useImageResize({ editorRef, recount, zoom: zoom / 100 });
@@ -938,6 +942,7 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
       />
 
       <Ribbon
+        format={format}
         tab={tab}
         onTab={setTab}
         onFileMenu={() => setFileMenu(true)}
