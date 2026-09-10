@@ -113,6 +113,7 @@ export const useContextMenu = ({
         y: e.clientY,
         hasSelection: selectionInside(root),
         inTable: !!node.closest?.('table'),
+        onImage: node.tagName === 'IMG',
       });
     };
 

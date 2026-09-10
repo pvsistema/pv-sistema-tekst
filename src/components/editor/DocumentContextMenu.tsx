@@ -10,6 +10,8 @@ export interface ContextTarget {
   hasSelection: boolean;
   /** Курсор внутри таблицы */
   inTable: boolean;
+  /** Правой кнопкой щёлкнули по картинке */
+  onImage?: boolean;
   /** Слово под курсором — для подсказки правописания */
   word?: string;
 }
@@ -27,6 +29,9 @@ interface Props {
   onDeleteRow?: () => void;
   onDeleteColumn?: () => void;
   onLink?: () => void;
+  /** Быстрый размер картинки в процентах от ширины строки */
+  onImageWidth?: (percent: number) => void;
+  onImageDelete?: () => void;
   onComment?: () => void;
   onSelectAll: () => void;
 }
@@ -151,6 +156,44 @@ const DocumentContextMenu = (p: Props) => {
             label: 'Удалить столбец',
             icon: 'Trash2',
             run: p.onDeleteColumn,
+          },
+        ],
+      },
+    );
+  }
+
+  /* щёлкнули по картинке — показываем её размеры */
+  if (t.onImage) {
+    items.push(
+      { id: 'si', label: '', separator: true },
+      {
+        id: 'image',
+        label: 'Рисунок',
+        icon: 'Image',
+        children: [
+          {
+            id: 'w25',
+            label: 'Четверть ширины',
+            icon: 'Scaling',
+            run: () => p.onImageWidth?.(25),
+          },
+          {
+            id: 'w50',
+            label: 'Половина ширины',
+            icon: 'Scaling',
+            run: () => p.onImageWidth?.(50),
+          },
+          {
+            id: 'w100',
+            label: 'По ширине страницы',
+            icon: 'Maximize2',
+            run: () => p.onImageWidth?.(100),
+          },
+          {
+            id: 'idel',
+            label: 'Удалить рисунок',
+            icon: 'Trash2',
+            run: p.onImageDelete,
           },
         ],
       },

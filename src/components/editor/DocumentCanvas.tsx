@@ -240,7 +240,7 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
                     paddingRight: padRight + setup.indentRight * CM,
                     fontFamily: theme.bodyFont,
                     color: theme.bodyColor,
-                    fontSize: 15,
+                    fontSize: '12pt',
                     lineHeight: 1.5,
                     columnCount: setup.columns,
                     columnGap: setup.columnGap * CM,

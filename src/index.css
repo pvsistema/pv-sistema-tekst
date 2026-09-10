@@ -213,6 +213,18 @@
     @apply my-3 inline-block max-w-full align-bottom;
   }
 
+  /* рамка выбранной картинки с уголками для изменения размера */
+  .pv-img-frame {
+    @apply pointer-events-none absolute z-[30];
+    outline: 1px solid hsl(210 80% 52%);
+  }
+
+  .pv-img-handle {
+    @apply pointer-events-auto absolute h-[9px] w-[9px] rounded-[1px];
+    background: #fff;
+    border: 1px solid hsl(210 80% 52%);
+  }
+
   /* вкладка «Ссылки»: сноски, оглавление, указатели */
   .pv-page sup.pv-fn,
   .pv-page sup.pv-en {

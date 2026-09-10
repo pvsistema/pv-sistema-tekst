@@ -34,6 +34,7 @@ import {
 } from '@/lib/print';
 import AutoCorrectDialog from '@/components/editor/AutoCorrectDialog';
 import { useShapes } from '@/hooks/use-shapes';
+import { useImageResize } from '@/hooks/use-image-resize';
 import { useInserts } from '@/hooks/use-inserts';
 import { useEquation } from '@/hooks/use-equation';
 import { useCharts } from '@/hooks/use-charts';
@@ -383,6 +384,9 @@ const Editor = () => {
     inserts.refreshFields();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
+
+  /* изменение размера картинок мышью за уголок */
+  const images = useImageResize({ editorRef, recount, zoom: zoom / 100 });
 
   const shapes = useShapes({
     editorRef,
@@ -1251,6 +1255,8 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
           const url = window.prompt('Адрес ссылки', 'https://');
           if (url) exec('createLink', url);
         }}
+        onImageWidth={images.setWidthPercent}
+        onImageDelete={images.removeImage}
         onComment={review.newComment}
         onSelectAll={() => exec('selectAll')}
       />
