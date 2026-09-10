@@ -213,7 +213,7 @@ export const buildPrintHtml = (o: PrintDocOptions): string => {
     o.title,
   )}</title><style>
 ${o.pageCss}
-body{font-family:Calibri,Arial,sans-serif;line-height:1.5;margin:0;zoom:${s.scale / 100}}
+body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;margin:0;zoom:${s.scale / 100}}
 ${o.bodyCss}
 ${hidden}
 ${noArt}

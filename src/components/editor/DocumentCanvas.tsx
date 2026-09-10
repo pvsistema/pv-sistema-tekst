@@ -112,7 +112,8 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
                 fontFamily:
                   viewMode === 'draft' ? 'Courier New, monospace' : theme.bodyFont,
                 color: theme.bodyColor,
-                fontSize: 15,
+                /* 12 пунктов — размер основного текста по умолчанию */
+                fontSize: '12pt',
                 lineHeight: 1.5,
                 zoom: scale,
                 '--pv-h-font': theme.headingFont,

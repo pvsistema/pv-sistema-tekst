@@ -36,7 +36,7 @@ export const BUILTIN_STYLES: DocStyle[] = [
     level: 0,
     tag: 'p',
     builtin: true,
-    char: c({ family: 'Calibri', size: 11, color: '#000000' }),
+    char: c({ family: 'Times New Roman', size: 12, color: '#000000' }),
     para: p({ spaceAfter: 8, lineRule: '1.15' }),
   },
   {
@@ -46,7 +46,7 @@ export const BUILTIN_STYLES: DocStyle[] = [
     level: 0,
     tag: 'p',
     builtin: true,
-    char: c({ family: 'Calibri', size: 11, color: '#000000' }),
+    char: c({ family: 'Times New Roman', size: 12, color: '#000000' }),
     para: p({ spaceBefore: 0, spaceAfter: 0, lineRule: 'single' }),
   },
   {
@@ -56,7 +56,7 @@ export const BUILTIN_STYLES: DocStyle[] = [
     level: 1,
     tag: 'h1',
     builtin: true,
-    char: c({ family: 'Calibri Light', size: 16, color: '#2f5496' }),
+    char: c({ family: 'Times New Roman', size: 16, color: '#2f5496' }),
     para: p({ spaceBefore: 12, spaceAfter: 4, lineRule: 'single' }),
   },
   {
@@ -66,7 +66,7 @@ export const BUILTIN_STYLES: DocStyle[] = [
     level: 2,
     tag: 'h2',
     builtin: true,
-    char: c({ family: 'Calibri Light', size: 13, color: '#2f5496' }),
+    char: c({ family: 'Times New Roman', size: 14, color: '#2f5496' }),
     para: p({ spaceBefore: 10, spaceAfter: 4, lineRule: 'single' }),
   },
   {
@@ -76,7 +76,7 @@ export const BUILTIN_STYLES: DocStyle[] = [
     level: 3,
     tag: 'h3',
     builtin: true,
-    char: c({ family: 'Calibri Light', size: 12, color: '#1f3864' }),
+    char: c({ family: 'Times New Roman', size: 13, color: '#1f3864' }),
     para: p({ spaceBefore: 8, spaceAfter: 4, lineRule: 'single' }),
   },
   {
@@ -86,7 +86,7 @@ export const BUILTIN_STYLES: DocStyle[] = [
     level: 0,
     tag: 'h1',
     builtin: true,
-    char: c({ family: 'Calibri Light', size: 28, color: '#000000' }),
+    char: c({ family: 'Times New Roman', size: 28, color: '#000000' }),
     para: p({ align: 'center', spaceAfter: 12, lineRule: 'single' }),
   },
   {
@@ -96,7 +96,7 @@ export const BUILTIN_STYLES: DocStyle[] = [
     level: 0,
     tag: 'h4',
     builtin: true,
-    char: c({ family: 'Calibri', size: 14, color: '#5a5a5a', italic: true }),
+    char: c({ family: 'Times New Roman', size: 14, color: '#5a5a5a', italic: true }),
     para: p({ align: 'center', spaceAfter: 10 }),
   },
   {
@@ -106,7 +106,7 @@ export const BUILTIN_STYLES: DocStyle[] = [
     level: 0,
     tag: 'blockquote',
     builtin: true,
-    char: c({ family: 'Calibri', size: 11, color: '#404040', italic: true }),
+    char: c({ family: 'Times New Roman', size: 12, color: '#404040', italic: true }),
     para: p({ indentLeft: 1, indentRight: 1, spaceBefore: 6, spaceAfter: 6 }),
   },
   {

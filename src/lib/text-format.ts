@@ -33,8 +33,8 @@ export interface ParaFormat {
 }
 
 export const DEFAULT_CHAR: CharFormat = {
-  family: 'Calibri',
-  size: 11,
+  family: 'Times New Roman',
+  size: 12,
   bold: false,
   italic: false,
   underline: 'none',

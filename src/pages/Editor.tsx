@@ -103,8 +103,8 @@ const Editor = () => {
   const [findOpen, setFindOpen] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [fontFamily, setFontFamily] = useState('Calibri (Основной)');
-  const [fontSize, setFontSize] = useState('11');
+  const [fontFamily, setFontFamily] = useState('Times New Roman');
+  const [fontSize, setFontSize] = useState('12');
   const [stats, setStats] = useState({ words: 0, chars: 0, pages: 1 });
   /* параметры печати */
   const [print, setPrint] = useState<PrintSetup>(DEFAULT_PRINT);
@@ -662,7 +662,7 @@ const Editor = () => {
     const title = active?.title ?? 'Документ';
 
     const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title><style>
-body{font-family:Calibri,Arial,sans-serif;line-height:1.5;max-width:21cm;margin:2cm auto}
+body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;max-width:21cm;margin:2cm auto}
 table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6px}
 </style></head><body>${body}</body></html>`;
 

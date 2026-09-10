@@ -14,7 +14,7 @@ export interface DocTheme {
 }
 
 export const THEMES: DocTheme[] = [
-  { id: 't1', headingFont: 'Calibri Light, sans-serif', headingColor: '#2f5496', bodyFont: 'Calibri, sans-serif', bodyColor: '#000', headingSize: 15 },
+  { id: 't1', headingFont: "'Times New Roman', serif", headingColor: '#2f5496', bodyFont: "'Times New Roman', serif", bodyColor: '#000', headingSize: 16 },
   { id: 't2', headingFont: 'Georgia, serif', headingColor: '#000', bodyFont: 'Georgia, serif', bodyColor: '#333', headingSize: 15 },
   { id: 't3', headingFont: 'Arial, sans-serif', headingColor: '#404040', bodyFont: 'Arial, sans-serif', bodyColor: '#404040', headingSize: 14 },
   { id: 't4', headingFont: 'Cambria, serif', headingColor: '#1f3864', bodyFont: 'Cambria, serif', bodyColor: '#000', headingSize: 16 },
@@ -42,7 +42,7 @@ export const COLOR_SETS: { id: string; colors: string[] }[] = [
 ];
 
 export const FONT_SETS: { id: string; heading: string; body: string; label: string }[] = [
-  { id: 'f1', heading: 'Calibri Light, sans-serif', body: 'Calibri, sans-serif', label: 'Calibri' },
+  { id: 'f1', heading: "'Times New Roman', serif", body: "'Times New Roman', serif", label: 'Times New Roman' },
   { id: 'f2', heading: 'Georgia, serif', body: 'Georgia, serif', label: 'Georgia' },
   { id: 'f3', heading: 'Cambria, serif', body: 'Cambria, serif', label: 'Cambria' },
   { id: 'f4', heading: 'Arial, sans-serif', body: 'Arial, sans-serif', label: 'Arial' },

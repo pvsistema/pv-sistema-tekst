@@ -16,8 +16,8 @@ import type { DocStyle } from '@/lib/doc-styles';
 import { styleCss } from '@/lib/doc-styles';
 
 const FONTS = [
-  'Calibri (Основной)',
   'Times New Roman',
+  'Calibri',
   'Arial',
   'Georgia',
   'Courier New',
@@ -25,8 +25,8 @@ const FONTS = [
 ];
 
 const FONT_VALUE: Record<string, string> = {
-  'Calibri (Основной)': 'Calibri, sans-serif',
   'Times New Roman': "'Times New Roman', serif",
+  Calibri: 'Calibri, sans-serif',
   Arial: 'Arial, sans-serif',
   Georgia: 'Georgia, serif',
   'Courier New': "'Courier New', monospace",
@@ -140,7 +140,7 @@ const RibbonHome = (p: RibbonHomeProps) => (
             value={p.fontFamily}
             onChange={p.onFontFamily}
             options={FONTS}
-            width={118}
+            width={132}
           />
           <Combo value={p.fontSize} onChange={p.onFontSize} options={SIZES} width={46} />
           <SmallBtn

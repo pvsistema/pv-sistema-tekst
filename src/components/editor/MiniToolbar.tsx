@@ -18,8 +18,8 @@ interface Props {
 }
 
 const FONTS = [
-  'Calibri (Основной)',
   'Times New Roman',
+  'Calibri',
   'Arial',
   'Georgia',
   'Courier New',
