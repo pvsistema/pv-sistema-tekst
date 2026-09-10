@@ -208,6 +208,24 @@
     @apply bg-secondary font-semibold;
   }
 
+  /*
+   * Таблица, пришедшая из файла Word, показывается ровно так, как
+   * описана в документе: свои границы, заливка и вид шапки.
+   */
+  .pv-page table.pv-doc-table,
+  .pv-page table.pv-doc-table td,
+  .pv-page table.pv-doc-table th {
+    @apply border-0 bg-transparent;
+  }
+
+  .pv-page table.pv-doc-table {
+    @apply w-auto;
+  }
+
+  .pv-page table.pv-doc-table th {
+    @apply text-left font-normal;
+  }
+
   /* картинка слушается выравнивания абзаца, как в Word */
   .pv-page img {
     @apply my-3 inline-block max-w-full align-bottom;

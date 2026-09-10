@@ -444,7 +444,70 @@ const paraCss = (props: string): string => {
   return css.join(';');
 };
 
-/** Таблица документа */
+/** Толщина границы Word (восьмые доли пункта) в точки экрана */
+const borderWidth = (raw?: string): number => {
+  const eighths = Number(raw ?? 4);
+  /* меньше одной точки браузер всё равно округлит */
+  return Math.max(1, Math.round(eighths / 8));
+};
+
+/** Одна граница в виде готового свойства */
+const borderCss = (tag: string): string | null => {
+  const style = tag.match(/w:val="(\w+)"/)?.[1] ?? 'single';
+
+  /* nil и none означают, что границы нет */
+  if (style === 'nil' || style === 'none') return 'none';
+
+  const size = borderWidth(tag.match(/w:sz="(\d+)"/)?.[1]);
+
+  const raw = tag.match(/w:color="([0-9A-Fa-f]{6})"/)?.[1];
+  const color = raw && raw.toLowerCase() !== 'auto' ? `#${raw}` : '#000';
+
+  const kind =
+    style === 'dashed' || style === 'dotted'
+      ? style
+      : style === 'double'
+        ? 'double'
+        : 'solid';
+
+  return `${size}px ${kind} ${color}`;
+};
+
+/** Границы из описания таблицы или ячейки */
+const readBorders = (
+  props: string,
+  wrapper: 'tblBorders' | 'tcBorders',
+): Partial<Record<'top' | 'left' | 'bottom' | 'right' | 'insideH' | 'insideV', string>> => {
+  const block = props.match(
+    new RegExp(`<w:${wrapper}>([\\s\\S]*?)</w:${wrapper}>`),
+  )?.[1];
+
+  const out: Record<string, string> = {};
+  if (!block) return out;
+
+  for (const side of ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']) {
+    const tag = block.match(new RegExp(`<w:${side}\\b[^>]*/?>`))?.[0];
+    if (!tag) continue;
+
+    const css = borderCss(tag);
+    if (css) out[side] = css;
+  }
+
+  return out;
+};
+
+/** Заливка ячейки или строки */
+const readShade = (props: string): string | null => {
+  const shd = props.match(/<w:shd\b[^>]*\/?>/)?.[0];
+  if (!shd) return null;
+
+  const fill = shd.match(/w:fill="([0-9A-Fa-f]{6})"/)?.[1];
+  if (!fill || fill.toLowerCase() === 'auto') return null;
+
+  return `#${fill}`;
+};
+
+/** Таблица документа: ширина столбцов, границы и объединение ячеек */
 const tableToHtml = (
   table: string,
   numbering?: Map<string, boolean>,
@@ -454,35 +517,182 @@ const tableToHtml = (
   const rows = [...table.matchAll(/<w:tr(?:\s[^>]*)?>([\s\S]*?)<\/w:tr>/g)];
   if (!rows.length) return '';
 
-  const body = rows
-    .map((r) => {
-      const cells = [...r[1].matchAll(/<w:tc(?:\s[^>]*)?>([\s\S]*?)<\/w:tc>/g)]
-        .map((c) => {
-          const paras = [...c[1].matchAll(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g)]
-            .map((p) => paraToHtml(p[1], numbering, defaults, images));
+  /* настройки всей таблицы идут до первой строки */
+  const tblPr = table.match(/<w:tblPr>([\s\S]*?)<\/w:tblPr>/)?.[1] ?? '';
 
-          /* один абзац в ячейке показываем без обёртки — как в Word */
-          const text =
-            paras.length === 1
-              ? paras[0].replace(/^<p[^>]*>|<\/p>$/g, '')
-              : paras.join('');
+  const outer = readBorders(tblPr, 'tblBorders');
 
-          return `<td>${text.trim() || '&nbsp;'}</td>`;
-        })
-        .join('');
-      return `<tr>${cells}</tr>`;
-    })
-    .join('');
+  /* ширины столбцов из сетки таблицы */
+  const grid = table.match(/<w:tblGrid>([\s\S]*?)<\/w:tblGrid>/)?.[1] ?? '';
+  const cols = [...grid.matchAll(/<w:gridCol[^>]*w:w="(\d+)"/g)].map((m) =>
+    Number(m[1]),
+  );
 
-  /* первая строка помечена как заголовочная — показываем её шапкой */
-  if (/<w:tblHeader\b/.test(rows[0][1]) || /<w:b\/>/.test(rows[0][1])) {
-    const head = body.match(/<tr>[\s\S]*?<\/tr>/)?.[0] ?? '';
-    const rest = body.slice(head.length);
-    return `<table><thead>${head.replace(/<td>/g, '<th>').replace(/<\/td>/g, '</th>')}</thead><tbody>${rest}</tbody></table>`;
+  const gridTotal = cols.reduce((a, b) => a + b, 0);
+
+  /* ширина самой таблицы: в двадцатых долях пункта либо в процентах */
+  const tblW = tblPr.match(/<w:tblW\b[^>]*\/?>/)?.[0] ?? '';
+  const wType = tblW.match(/w:type="(\w+)"/)?.[1];
+  const wVal = Number(tblW.match(/w:w="(\d+)"/)?.[1] ?? 0);
+
+  let tableWidth = '';
+  if (wType === 'pct' && wVal) {
+    /* Word хранит проценты в пятидесятых долях */
+    tableWidth = `width:${trim(Math.min(100, wVal / 50))}%`;
+  } else if (wType === 'dxa' && wVal) {
+    tableWidth = `width:${trim(twipsToCm(String(wVal)))}cm`;
+  } else if (gridTotal) {
+    tableWidth = `width:${trim(twipsToCm(String(gridTotal)))}cm`;
   }
 
-  return `<table>${body}</table>`;
+  /* колонки задаём отдельно — так столбцы держат заданную ширину */
+  const colGroup = cols.length
+    ? `<colgroup>${cols
+        .map(
+          (w) =>
+            `<col style="width:${trim((w / Math.max(1, gridTotal)) * 100)}%">`,
+        )
+        .join('')}</colgroup>`
+    : '';
+
+  let headHtml = '';
+  const bodyRows: string[] = [];
+
+  rows.forEach((r, rowIndex) => {
+    const raw = r[1];
+
+    const trPr = raw.match(/<w:trPr>([\s\S]*?)<\/w:trPr>/)?.[1] ?? '';
+    const isHead = /<w:tblHeader\b/.test(trPr);
+
+    /* высота строки, если задана точно */
+    const trH = trPr.match(/<w:trHeight[^>]*w:val="(\d+)"/)?.[1];
+    const rowStyle = trH ? ` style="height:${trim(twipsToCm(trH))}cm"` : '';
+
+    const cells = [...raw.matchAll(/<w:tc(?:\s[^>]*)?>([\s\S]*?)<\/w:tc>/g)];
+
+    const cellsHtml = cells
+      .map((c, cellIndex) => {
+        const inner = c[1];
+        const tcPr = inner.match(/<w:tcPr>([\s\S]*?)<\/w:tcPr>/)?.[1] ?? '';
+
+        /* ячейка, продолжающая объединение сверху, не выводится */
+        const vMerge = tcPr.match(/<w:vMerge\b[^>]*\/?>/)?.[0];
+        if (vMerge && !/w:val="restart"/.test(vMerge)) return '';
+
+        const paras = [
+          ...inner.matchAll(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g),
+        ].map((p) => paraToHtml(p[1], numbering, defaults, images));
+
+        /*
+         * Один абзац в ячейке показываем без обёртки — как в Word,
+         * но его оформление переносим на саму ячейку, иначе теряется
+         * выравнивание и шрифт.
+         */
+        const single = paras.length === 1;
+
+        const inlineCss = single
+          ? (paras[0].match(/^<p[^>]*style="([^"]*)"/)?.[1] ?? '')
+          : '';
+
+        const text = single
+          ? paras[0].replace(/^<p[^>]*>|<\/p>$/g, '')
+          : paras.join('');
+
+        const css: string[] = [];
+        if (inlineCss) css.push(inlineCss);
+
+        /* границы: свои у ячейки, иначе общие для таблицы */
+        const own = readBorders(tcPr, 'tcBorders');
+
+        const first = cellIndex === 0;
+        const lastCell = cellIndex === cells.length - 1;
+        const firstRow = rowIndex === 0;
+        const lastRow = rowIndex === rows.length - 1;
+
+        const pick = (
+          side: 'top' | 'left' | 'bottom' | 'right',
+          edge: boolean,
+          inside?: 'insideH' | 'insideV',
+        ) => {
+          const value =
+            own[side] ??
+            (edge ? outer[side] : inside && outer[inside]) ??
+            (inside ? outer[inside] : undefined) ??
+            outer[side];
+
+          if (value) css.push(`border-${side}:${value}`);
+        };
+
+        pick('top', firstRow, 'insideH');
+        pick('bottom', lastRow, 'insideH');
+        pick('left', first, 'insideV');
+        pick('right', lastCell, 'insideV');
+
+        const shade = readShade(tcPr);
+        if (shade) css.push(`background-color:${shade}`);
+
+        /* выравнивание содержимого по высоте */
+        const vAlign = tcPr.match(/<w:vAlign[^>]*w:val="(\w+)"/)?.[1];
+        if (vAlign === 'center') css.push('vertical-align:middle');
+        else if (vAlign === 'bottom') css.push('vertical-align:bottom');
+
+        /* объединение по горизонтали и вертикали */
+        const span = tcPr.match(/<w:gridSpan[^>]*w:val="(\d+)"/)?.[1];
+        const colspan = span && Number(span) > 1 ? ` colspan="${span}"` : '';
+
+        let rowspan = '';
+        if (vMerge) {
+          /* считаем, сколько строк ниже продолжают это объединение */
+          let count = 1;
+
+          for (let i = rowIndex + 1; i < rows.length; i += 1) {
+            const next = [
+              ...rows[i][1].matchAll(/<w:tc(?:\s[^>]*)?>([\s\S]*?)<\/w:tc>/g),
+            ][cellIndex];
+
+            const nextPr =
+              next?.[1].match(/<w:tcPr>([\s\S]*?)<\/w:tcPr>/)?.[1] ?? '';
+
+            const merged = nextPr.match(/<w:vMerge\b[^>]*\/?>/)?.[0];
+            if (!merged || /w:val="restart"/.test(merged)) break;
+
+            count += 1;
+          }
+
+          if (count > 1) rowspan = ` rowspan="${count}"`;
+        }
+
+        const tag = isHead ? 'th' : 'td';
+        const styleAttr = css.length ? ` style="${css.join(';')}"` : '';
+
+        return `<${tag}${colspan}${rowspan}${styleAttr}>${
+          text.trim() || '&nbsp;'
+        }</${tag}>`;
+      })
+      .join('');
+
+    const html = `<tr${rowStyle}>${cellsHtml}</tr>`;
+
+    if (isHead) headHtml += html;
+    else bodyRows.push(html);
+  });
+
+  const styleAttr = tableWidth ? ` style="${tableWidth}"` : '';
+  const body = bodyRows.join('');
+
+  /*
+   * Метка «таблица из файла»: её оформление уже описано в самом
+   * документе, и лист не должен добавлять свои границы и заливку.
+   */
+  const attrs = ` class="pv-doc-table"${styleAttr}`;
+
+  if (headHtml) {
+    return `<table${attrs}>${colGroup}<thead>${headHtml}</thead><tbody>${body}</tbody></table>`;
+  }
+
+  return `<table${attrs}>${colGroup}${body}</table>`;
 };
+
 
 /**
  * Собирает подряд идущие пункты в списки. Маркированные и нумерованные
