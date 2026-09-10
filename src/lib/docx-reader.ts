@@ -17,6 +17,23 @@ export const isZip = (bytes: Uint8Array) =>
 /** Полутвипы Word в пункты: 28 → 14 пт */
 const halfPointsToPt = (raw: string): number => Number(raw) / 2;
 
+/**
+ * Шрифт с запасным вариантом: если такого шрифта в системе нет,
+ * подставится похожий, а не случайный.
+ */
+const fontStack = (name: string): string => {
+  const serif =
+    /times|georgia|cambria|garamond|book|minion|pt serif|liberation serif/i.test(
+      name,
+    );
+
+  const mono = /courier|consolas|mono/i.test(name);
+
+  const fallback = mono ? 'monospace' : serif ? 'serif' : 'sans-serif';
+
+  return `'${name}', ${fallback}`;
+};
+
 /** Твипы Word в сантиметры: 709 → 1,25 см */
 const twipsToCm = (raw: string): number => Number(raw) / 567;
 
@@ -128,7 +145,7 @@ const runToHtml = (run: string, images?: Map<string, string>): string => {
     props.match(/<w:rFonts[^>]*w:ascii="([^"]+)"/)?.[1] ??
     props.match(/<w:rFonts[^>]*w:hAnsi="([^"]+)"/)?.[1];
 
-  if (font) css.push(`font-family:'${font}'`);
+  if (font) css.push(`font-family:${fontStack(font)}`);
 
   /* Word может задать размер дважды — верное значение последнее */
   const sizes = [...props.matchAll(/<w:sz[^>]*w:val="(\d+)"/g)];
@@ -176,14 +193,49 @@ const parseNumbering = (xml: string): Map<string, boolean> => {
 };
 
 /** Основное оформление документа: шрифт и размер по умолчанию */
+export interface StyleInfo {
+  font?: string;
+  size?: string;
+  /** Оформление абзаца в виде готовых свойств */
+  css: string;
+  /** Стиль-родитель, от которого унаследовано оформление */
+  basedOn?: string;
+}
+
+/** Основное оформление документа: шрифт, размер и вид абзаца */
 export interface DocDefaults {
   font?: string;
   size?: string;
+  /** Оформление абзаца по умолчанию для всего документа */
+  css?: string;
   /** Оформление именованных стилей: Обычный, Заголовок и прочие */
-  styles: Map<string, { font?: string; size?: string; css: string }>;
+  styles: Map<string, StyleInfo>;
+  /** Стиль, который Word применяет к абзацам без явного стиля */
+  defaultStyle?: string;
 }
 
-/** Читает styles.xml — оттуда берётся шрифт всего документа */
+/**
+ * Склеивает свойства оформления: то, что идёт позже, побеждает.
+ * Word так же накладывает оформление стиля поверх унаследованного.
+ */
+const mergeCss = (...parts: (string | undefined)[]): string => {
+  const map = new Map<string, string>();
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    for (const rule of part.split(';')) {
+      const colon = rule.indexOf(':');
+      if (colon < 1) continue;
+
+      map.set(rule.slice(0, colon).trim(), rule.slice(colon + 1).trim());
+    }
+  }
+
+  return [...map].map(([k, v]) => `${k}:${v}`).join(';');
+};
+
+/** Читает styles.xml — оттуда берётся оформление всего документа */
 const parseStyles = (xml: string): DocDefaults => {
   const defaults: DocDefaults = { styles: new Map() };
 
@@ -197,25 +249,81 @@ const parseStyles = (xml: string): DocDefaults => {
 
     defaults.size =
       docDefaults.match(/<w:sz[^>]*w:val="(\d+)"/)?.[1] ?? undefined;
+
+    /* вид абзаца по умолчанию: интервалы и выравнивание */
+    const pPrDefault = docDefaults.match(
+      /<w:pPrDefault>([\s\S]*?)<\/w:pPrDefault>/,
+    )?.[1];
+
+    if (pPrDefault) defaults.css = paraCss(pPrDefault);
   }
 
   /* оформление именованных стилей — на них ссылаются абзацы */
   for (const m of xml.matchAll(
-    /<w:style\b[^>]*w:styleId="([^"]+)"[^>]*>([\s\S]*?)<\/w:style>/g,
+    /<w:style\b([^>]*)>([\s\S]*?)<\/w:style>/g,
   )) {
+    const head = m[1];
     const body = m[2];
+
+    const id = head.match(/w:styleId="([^"]+)"/)?.[1];
+    if (!id) continue;
 
     const rPr = body.match(/<w:rPr>([\s\S]*?)<\/w:rPr>/)?.[1] ?? '';
     const pPr = body.match(/<w:pPr>([\s\S]*?)<\/w:pPr>/)?.[1] ?? '';
 
-    defaults.styles.set(m[1], {
+    /* Word помечает так стиль, применяемый к обычным абзацам */
+    if (
+      /w:default="(?:1|true)"/.test(head) &&
+      /w:type="paragraph"/.test(head)
+    ) {
+      defaults.defaultStyle = id;
+    }
+
+    defaults.styles.set(id, {
       font: rPr.match(/<w:rFonts[^>]*w:ascii="([^"]+)"/)?.[1],
       size: rPr.match(/<w:sz[^>]*w:val="(\d+)"/)?.[1],
       css: paraCss(pPr),
+      basedOn: body.match(/<w:basedOn[^>]*w:val="([^"]+)"/)?.[1],
     });
   }
 
   return defaults;
+};
+
+/**
+ * Собирает итоговое оформление стиля вместе с унаследованным
+ * от стилей-родителей.
+ */
+const resolveStyle = (
+  id: string | undefined,
+  defaults: DocDefaults | undefined,
+): StyleInfo => {
+  const empty: StyleInfo = { css: '' };
+  if (!id || !defaults) return empty;
+
+  /* цепочка от дальнего предка к самому стилю */
+  const chain: StyleInfo[] = [];
+  const seen = new Set<string>();
+
+  let current: string | undefined = id;
+
+  while (current && !seen.has(current)) {
+    seen.add(current);
+
+    const info = defaults.styles.get(current);
+    if (!info) break;
+
+    chain.unshift(info);
+    current = info.basedOn;
+  }
+
+  if (!chain.length) return empty;
+
+  return {
+    css: mergeCss(...chain.map((s) => s.css)),
+    font: [...chain].reverse().find((s) => s.font)?.font,
+    size: [...chain].reverse().find((s) => s.size)?.size,
+  };
 };
 
 /** Абзац: заголовок, элемент списка или обычный текст */
@@ -249,11 +357,22 @@ const paraToHtml = (
     return `<li data-ordered="${ordered}" data-level="${level}">${inner || '&nbsp;'}</li>`;
   }
 
-  /* к своему оформлению абзаца добавляем то, что задано его стилем */
-  const fromStyle = style ? defaults?.styles.get(style)?.css : '';
+  /*
+   * Порядок как в Word: общий вид документа, затем стиль абзаца
+   * (вместе с унаследованным), и сверху — оформление самого абзаца.
+   */
+  const applied = style || defaults?.defaultStyle;
+  const fromStyle = resolveStyle(applied, defaults);
+
   const own = paraCss(props);
 
-  const css = [fromStyle, own].filter(Boolean).join(';');
+  /* шрифт и размер стиля важнее общих: их Word показывает в тексте */
+  const face: string[] = [];
+  if (fromStyle.font) face.push(`font-family:${fontStack(fromStyle.font)}`);
+  if (fromStyle.size)
+    face.push(`font-size:${trim(halfPointsToPt(fromStyle.size))}pt`);
+
+  const css = mergeCss(defaults?.css, fromStyle.css, face.join(';'), own);
   const styleAttr = css ? ` style="${css}"` : '';
 
   /* заголовки сохраняют выравнивание и отступы, заданные в документе */
@@ -704,18 +823,22 @@ export const docxToHtml = (bytes: Uint8Array): string | null => {
    * мешала бы делить и объединять абзацы при правке.
    */
   const base: string[] = [];
-  if (defaults?.font) base.push(`font-family:'${defaults.font}'`);
+  if (defaults?.font) base.push(`font-family:${fontStack(defaults.font)}`);
   if (defaults?.size)
     base.push(`font-size:${trim(halfPointsToPt(defaults.size))}pt`);
 
   if (!base.length) return body_html;
 
-  const prefix = `${base.join(';')};`;
+  const prefix = base.join(';');
 
+  /*
+   * Общий шрифт — только запасной вариант: если у абзаца уже есть
+   * свой шрифт или размер из стиля, они остаются главными.
+   */
   return body_html.replace(
     /<(p|h[1-6]|li)(\s+style="([^"]*)")?([^>]*)>/g,
     (_all, tag, _attr, css, rest) =>
-      `<${tag} style="${prefix}${css ?? ''}"${rest}>`,
+      `<${tag} style="${mergeCss(prefix, css)}"${rest}>`,
   );
 };
 

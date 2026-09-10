@@ -114,7 +114,8 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
                 color: theme.bodyColor,
                 /* 12 пунктов — размер основного текста по умолчанию */
                 fontSize: '12pt',
-                lineHeight: 1.5,
+                /* одинарный интервал, как в Word */
+                lineHeight: 1.15,
                 zoom: scale,
                 '--pv-h-font': theme.headingFont,
                 '--pv-h-color': theme.headingColor,
@@ -241,7 +242,7 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
                     fontFamily: theme.bodyFont,
                     color: theme.bodyColor,
                     fontSize: '12pt',
-                    lineHeight: 1.5,
+                    lineHeight: 1.15,
                     columnCount: setup.columns,
                     columnGap: setup.columnGap * CM,
                     columnRule: setup.columnRule
