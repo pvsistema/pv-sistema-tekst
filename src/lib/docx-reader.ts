@@ -23,16 +23,82 @@ const twipsToCm = (raw: string): number => Number(raw) / 567;
 /** Число без длинного хвоста после запятой */
 const trim = (v: number): string => String(Math.round(v * 100) / 100);
 
+/** Тип картинки по расширению файла внутри документа */
+const mimeOf = (name: string): string | null => {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+
+  if (ext === 'png') return 'image/png';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  if (ext === 'gif') return 'image/gif';
+  if (ext === 'bmp') return 'image/bmp';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'svg') return 'image/svg+xml';
+
+  /* wmf, emf и прочие форматы Word браузер показать не умеет */
+  return null;
+};
+
+/** Двоичные данные картинки в строку для атрибута src */
+const toBase64 = (bytes: Uint8Array): string => {
+  let binary = '';
+
+  /* по частям: у больших картинок аргументов слишком много для одного вызова */
+  const step = 0x8000;
+  for (let i = 0; i < bytes.length; i += step) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + step));
+  }
+
+  return btoa(binary);
+};
+
+/** Английские метры Word в точки экрана: 914400 на дюйм */
+const emuToPx = (raw: string): number => Math.round((Number(raw) / 914400) * 96);
+
+/** Картинка внутри участка текста */
+const imageHtml = (
+  run: string,
+  images?: Map<string, string>,
+): string => {
+  if (!images?.size) return '';
+
+  /* современный формат и старый VML времён Word 2003 */
+  const id =
+    run.match(/<a:blip[^>]*r:embed="([^"]+)"/)?.[1] ??
+    run.match(/<v:imagedata[^>]*r:id="([^"]+)"/)?.[1];
+
+  if (!id) return '';
+
+  const src = images.get(id);
+  if (!src) return '';
+
+  /* размер, заданный в документе */
+  const ext = run.match(/<wp:extent[^>]*cx="(\d+)"[^>]*cy="(\d+)"/);
+  const size = ext
+    ? ` width="${emuToPx(ext[1])}" height="${emuToPx(ext[2])}"`
+    : '';
+
+  const alt =
+    run.match(/<wp:docPr[^>]*descr="([^"]*)"/)?.[1] ??
+    run.match(/<wp:docPr[^>]*name="([^"]*)"/)?.[1] ??
+    '';
+
+  return `<img src="${src}" alt="${esc(alt)}"${size} style="max-width:100%">`;
+};
+
 /** Оформление одного участка текста: жирный, курсив и прочее */
-const runToHtml = (run: string): string => {
+const runToHtml = (run: string, images?: Map<string, string>): string => {
   const texts = [...run.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)]
     .map((m) => m[1])
     .join('');
 
   const breaks = /<w:br\b/.test(run) ? '<br>' : '';
   const tabs = [...run.matchAll(/<w:tab\/>/g)].map(() => '\u00a0\u00a0\u00a0\u00a0').join('');
+  const picture = imageHtml(run, images);
 
-  if (!texts && !breaks && !tabs) return '';
+  if (!texts && !breaks && !tabs && !picture) return '';
+
+  /* картинку не оборачиваем в оформление текста */
+  if (picture && !texts) return picture;
 
   let html = esc(texts) + tabs + breaks;
   const props = run.match(/<w:rPr>([\s\S]*?)<\/w:rPr>/)?.[1] ?? '';
@@ -79,7 +145,7 @@ const runToHtml = (run: string): string => {
 
   if (css.length) html = `<span style="${css.join(';')}">${html}</span>`;
 
-  return html;
+  return picture + html;
 };
 
 /**
@@ -157,9 +223,10 @@ const paraToHtml = (
   para: string,
   numbering?: Map<string, boolean>,
   defaults?: DocDefaults,
+  images?: Map<string, string>,
 ): string => {
   const inner = [...para.matchAll(/<w:r(?:\s[^>]*)?>([\s\S]*?)<\/w:r>/g)]
-    .map((m) => runToHtml(m[1]))
+    .map((m) => runToHtml(m[1], images))
     .join('');
 
   const props = para.match(/<w:pPr>([\s\S]*?)<\/w:pPr>/)?.[1] ?? '';
@@ -263,6 +330,7 @@ const tableToHtml = (
   table: string,
   numbering?: Map<string, boolean>,
   defaults?: DocDefaults,
+  images?: Map<string, string>,
 ): string => {
   const rows = [...table.matchAll(/<w:tr(?:\s[^>]*)?>([\s\S]*?)<\/w:tr>/g)];
   if (!rows.length) return '';
@@ -272,7 +340,7 @@ const tableToHtml = (
       const cells = [...r[1].matchAll(/<w:tc(?:\s[^>]*)?>([\s\S]*?)<\/w:tc>/g)]
         .map((c) => {
           const paras = [...c[1].matchAll(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g)]
-            .map((p) => paraToHtml(p[1], numbering, defaults));
+            .map((p) => paraToHtml(p[1], numbering, defaults, images));
 
           /* один абзац в ячейке показываем без обёртки — как в Word */
           const text =
@@ -542,6 +610,40 @@ export const docxExtras = (bytes: Uint8Array): DocxExtras | null => {
 };
 
 /**
+ * Собирает картинки документа: по ссылке из текста находим файл
+ * в архиве и переводим его в строку, понятную браузеру.
+ */
+const collectImages = (
+  files: Record<string, Uint8Array>,
+): Map<string, string> => {
+  const result = new Map<string, string>();
+
+  const relsFile = files['word/_rels/document.xml.rels'];
+  if (!relsFile) return result;
+
+  const rels = strFromU8(relsFile);
+
+  for (const m of rels.matchAll(
+    /<Relationship[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"[^>]*\/>/g,
+  )) {
+    const target = m[2];
+    if (!/media\//.test(target)) continue;
+
+    const name = `word/${target.replace(/^\/?word\//, '').replace(/^\.\.\//, '')}`;
+    const bytes = files[name];
+    if (!bytes) continue;
+
+    const mime = mimeOf(name);
+    /* формат, который браузер не покажет, пропускаем */
+    if (!mime) continue;
+
+    result.set(m[1], `data:${mime};base64,${toBase64(bytes)}`);
+  }
+
+  return result;
+};
+
+/**
  * Превращает содержимое .docx в разметку документа.
  * Возвращает null, если это не документ Word.
  */
@@ -552,7 +654,9 @@ export const docxToHtml = (bytes: Uint8Array): string | null => {
       filter: (f) =>
         f.name === 'word/document.xml' ||
         f.name === 'word/numbering.xml' ||
-        f.name === 'word/styles.xml',
+        f.name === 'word/styles.xml' ||
+        f.name === 'word/_rels/document.xml.rels' ||
+        f.name.startsWith('word/media/'),
     });
   } catch {
     return null;
@@ -569,6 +673,8 @@ export const docxToHtml = (bytes: Uint8Array): string | null => {
     ? parseStyles(strFromU8(files['word/styles.xml']))
     : undefined;
 
+  const images = collectImages(files);
+
   const xml = strFromU8(doc);
   const body = xml.match(/<w:body>([\s\S]*?)<\/w:body>/)?.[1] ?? xml;
 
@@ -579,11 +685,13 @@ export const docxToHtml = (bytes: Uint8Array): string | null => {
   for (const m of body.matchAll(re)) {
     const chunk = m[0];
     if (chunk.startsWith('<w:tbl')) {
-      parts.push(tableToHtml(chunk, numbering, defaults));
+      parts.push(tableToHtml(chunk, numbering, defaults, images));
     } else {
       const innerMatch = chunk.match(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/);
       parts.push(
-        innerMatch ? paraToHtml(innerMatch[1], numbering, defaults) : '<p><br></p>',
+        innerMatch
+          ? paraToHtml(innerMatch[1], numbering, defaults, images)
+          : '<p><br></p>',
       );
     }
   }

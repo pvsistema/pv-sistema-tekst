@@ -208,8 +208,9 @@
     @apply bg-secondary font-semibold;
   }
 
+  /* картинка слушается выравнивания абзаца, как в Word */
   .pv-page img {
-    @apply my-3 max-w-full rounded-sm;
+    @apply my-3 inline-block max-w-full align-bottom;
   }
 
   /* вкладка «Ссылки»: сноски, оглавление, указатели */

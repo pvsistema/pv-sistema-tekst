@@ -132,8 +132,98 @@ const BLOCK = new Set([
   'BLOCKQUOTE', 'PRE', 'HR', 'THEAD', 'TBODY',
 ]);
 
+/** Картинки, которые попадут в архив документа */
+interface PictureStore {
+  /** Имя файла в архиве → его содержимое */
+  files: Record<string, Uint8Array>;
+  /** Связи для document.xml.rels */
+  rels: string[];
+  /** Расширения, которые надо объявить в описании типов */
+  extensions: Set<string>;
+}
+
+const newStore = (): PictureStore => ({
+  files: {},
+  rels: [],
+  extensions: new Set(),
+});
+
+/** Строку вида data:image/png;base64,… в двоичные данные */
+const fromBase64 = (data: string): Uint8Array | null => {
+  const m = data.match(/^data:image\/([\w+.-]+);base64,(.+)$/i);
+  if (!m) return null;
+
+  try {
+    const binary = atob(m[2]);
+    const out = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i += 1) out[i] = binary.charCodeAt(i);
+    return out;
+  } catch {
+    return null;
+  }
+};
+
+/** Расширение файла по типу картинки */
+const extOf = (data: string): string => {
+  const kind = data.match(/^data:image\/([\w+.-]+);/i)?.[1].toLowerCase() ?? '';
+
+  if (kind === 'jpeg') return 'jpg';
+  if (kind === 'svg+xml') return 'svg';
+  return kind || 'png';
+};
+
+/** Точки экрана в английские метры Word */
+const pxToEmu = (px: number): number => Math.round((px / 96) * 914400);
+
+/**
+ * Добавляет картинку в архив и возвращает разметку для документа.
+ * Пустую строку — если картинку прочитать не удалось.
+ */
+const pictureRun = (el: Element, store: PictureStore): string => {
+  const src = el.getAttribute('src') ?? '';
+
+  const bytes = fromBase64(src);
+  /* картинки по ссылке в интернет Word не покажет — пропускаем */
+  if (!bytes) return '';
+
+  const ext = extOf(src);
+  const index = store.rels.length + 1;
+  const name = `image${index}.${ext}`;
+  const id = `rIdImg${index}`;
+
+  store.files[`word/media/${name}`] = bytes;
+  store.extensions.add(ext);
+  store.rels.push(
+    `<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${name}"/>`,
+  );
+
+  /* размер: берём заданный в документе, иначе — по ширине страницы */
+  const w = Number(el.getAttribute('width')) || 480;
+  const h = Number(el.getAttribute('height')) || 320;
+
+  const alt = esc(el.getAttribute('alt') || `Рисунок ${index}`);
+
+  return (
+    '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">' +
+    `<wp:extent cx="${pxToEmu(w)}" cy="${pxToEmu(h)}"/>` +
+    '<wp:effectExtent l="0" t="0" r="0" b="0"/>' +
+    `<wp:docPr id="${index}" name="${alt}" descr="${alt}"/>` +
+    '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
+    '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' +
+    '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+    '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+    `<pic:nvPicPr><pic:cNvPr id="${index}" name="${alt}"/><pic:cNvPicPr/></pic:nvPicPr>` +
+    `<pic:blipFill><a:blip r:embed="${id}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+    '<pic:spPr><a:xfrm><a:off x="0" y="0"/>' +
+    `<a:ext cx="${pxToEmu(w)}" cy="${pxToEmu(h)}"/></a:xfrm>` +
+    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>' +
+    '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>'
+  );
+};
+
 /** Собирает участки текста внутри абзаца, включая вложенное оформление */
-const collectRuns = (node: Node, fmt: Fmt): string => {
+const collectRuns = (node: Node, fmt: Fmt, pics?: PictureStore): string => {
   if (node.nodeType === Node.TEXT_NODE) {
     const text = (node.textContent ?? '').replace(/\s+/g, ' ');
     return run(text, fmt);
@@ -145,7 +235,7 @@ const collectRuns = (node: Node, fmt: Fmt): string => {
   const tag = el.tagName;
 
   if (tag === 'BR') return '<w:r><w:br/></w:r>';
-  if (tag === 'IMG') return '';
+  if (tag === 'IMG') return pics ? pictureRun(el, pics) : '';
 
   /*
    * Диаграмма нарисована как SVG. Его подписи не должны рассыпаться
@@ -182,7 +272,7 @@ const collectRuns = (node: Node, fmt: Fmt): string => {
   if (tag === 'SUB') next = { ...next, sub: true };
   if (tag === 'MARK') next = { ...next, bg: next.bg ?? 'FFFF00' };
 
-  return [...el.childNodes].map((c) => collectRuns(c, next)).join('');
+  return [...el.childNodes].map((c) => collectRuns(c, next, pics)).join('');
 };
 
 /** Свойства абзаца: стиль, выравнивание, уровень списка */
@@ -307,7 +397,7 @@ const alignOf = (el: Element): string | undefined => {
 const EMPTY_PARA = '<w:p/>';
 
 /** Преобразует содержимое редактора в тело документа Word */
-const bodyFromHtml = (root: Element): string => {
+const bodyFromHtml = (root: Element, pics?: PictureStore): string => {
   const out: string[] = [];
 
   const walkBlock = (el: Element, listCtx?: { numId: number; level: number }) => {
@@ -344,7 +434,9 @@ const bodyFromHtml = (root: Element): string => {
         .filter((c) => c.tagName === 'UL' || c.tagName === 'OL')
         .forEach((c) => c.remove());
 
-      const runs = [...clone.childNodes].map((c) => collectRuns(c, {})).join('');
+      const runs = [...clone.childNodes]
+        .map((c) => collectRuns(c, {}, pics))
+        .join('');
       out.push(
         `<w:p>${pPr({
           style: 'ListParagraph',
@@ -368,7 +460,9 @@ const bodyFromHtml = (root: Element): string => {
 
     /* диаграмма стоит отдельным блоком — отдаём её подписью */
     if (el.classList?.contains('pv-chart')) {
-      out.push(`<w:p>${pPr({ align: 'center' })}${collectRuns(el, {})}</w:p>`);
+      out.push(
+        `<w:p>${pPr({ align: 'center' })}${collectRuns(el, {}, pics)}</w:p>`,
+      );
       return;
     }
 
@@ -411,7 +505,9 @@ const bodyFromHtml = (root: Element): string => {
         ? 'Quote'
         : undefined;
 
-    const runs = [...el.childNodes].map((c) => collectRuns(c, {})).join('');
+    const runs = [...el.childNodes]
+      .map((c) => collectRuns(c, {}, pics))
+      .join('');
     if (!runs) {
       out.push(EMPTY_PARA);
       return;
@@ -461,7 +557,7 @@ const bodyFromHtml = (root: Element): string => {
             const bold = td.tagName === 'TH';
             const runs =
               [...td.childNodes]
-                .map((c) => collectRuns(c, bold ? { b: true } : {}))
+                .map((c) => collectRuns(c, bold ? { b: true } : {}, pics))
                 .join('') || run('', {});
 
             /* заливку берём из самой ячейки, иначе красим шапку */
@@ -718,10 +814,12 @@ export const htmlToDocx = (
   const hasHeader = !!f?.headerText || (!!f && f.numberTop);
   const hasFooter = !!f?.footerText || (!!f && f.numberPosition !== 'none' && !f.numberTop);
 
+  const pics = newStore();
+
   const document_xml =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<w:body>${bodyFromHtml(holder)}` +
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+<w:body>${bodyFromHtml(holder, pics)}` +
     `<w:sectPr>` +
     (() => {
       const pb = f?.pageBorder;
@@ -801,6 +899,14 @@ export const htmlToDocx = (
     '[Content_Types].xml': strToU8(
       CONTENT_TYPES.replace(
         '</Types>',
+        [...pics.extensions]
+          .map(
+            (ext) =>
+              `<Default Extension="${ext}" ContentType="image/${
+                ext === 'jpg' ? 'jpeg' : ext === 'svg' ? 'svg+xml' : ext
+              }"/>`,
+          )
+          .join('') +
         (hasHeader
           ? '<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>'
           : '') +
@@ -817,6 +923,7 @@ export const htmlToDocx = (
     'word/_rels/document.xml.rels': strToU8(
       DOC_RELS.replace(
         '</Relationships>',
+        pics.rels.join('') +
         (hasHeader
           ? '<Relationship Id="rIdHdr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>'
           : '') +
@@ -841,6 +948,9 @@ export const htmlToDocx = (
       furniturePart('ftr', f.footerText, f.footerAlign, f.numberTop ? null : f),
     );
   }
+
+  /* сами картинки кладём в архив рядом с документом */
+  Object.assign(files, pics.files);
 
   return zipSync(files, { level: 6 });
 };
