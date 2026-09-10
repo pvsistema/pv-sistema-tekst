@@ -35,6 +35,7 @@ import {
 import AutoCorrectDialog from '@/components/editor/AutoCorrectDialog';
 import { useShapes } from '@/hooks/use-shapes';
 import { useImageResize } from '@/hooks/use-image-resize';
+import { pagePixels } from '@/lib/page-setup';
 import { useInserts } from '@/hooks/use-inserts';
 import { useEquation } from '@/hooks/use-equation';
 import { useCharts } from '@/hooks/use-charts';
@@ -200,8 +201,17 @@ const Editor = () => {
     [],
   );
 
-  const pageHeight = setup.landscape ? PAGE_WIDTH : PAGE_HEIGHT;
-  const contentHeight = pageHeight - setup.margin * CM * 2;
+  /* высота листа и полей — из параметров страницы документа */
+  /* число с точностью до сотых — для размеров в сантиметрах */
+  const trimCm = (v: number) => Number(v.toFixed(2));
+
+  const pageHeight = pagePixels(
+    { width: setup.paperWidth, height: setup.paperHeight },
+    setup.landscape,
+  ).height;
+
+  const contentHeight =
+    pageHeight - (setup.marginTop + setup.marginBottom) * CM;
 
   const recount = useCallback(() => {
     const el = editorRef.current;
@@ -412,8 +422,7 @@ const Editor = () => {
     exec,
     recount,
     notify: (title, description) => toast({ title, description }),
-    contentHeight:
-      (setup.landscape ? PAGE_WIDTH : PAGE_HEIGHT) - setup.margin * CM * 2,
+    contentHeight,
   });
 
   const tabs = useTabs({
@@ -637,7 +646,12 @@ const Editor = () => {
     const [pw, ph] = PAPER_SIZES[print.paper];
     const size = setup.landscape ? `${ph}mm ${pw}mm` : `${pw}mm ${ph}mm`;
 
-    const page = `@page { size: ${size}; margin: ${setup.margin}cm; ${marks} }`;
+    /* поля печати — каждое со своей стороны, как задано в документе */
+    const margins =
+      `${trimCm(setup.marginTop)}cm ${trimCm(setup.marginRight)}cm ` +
+      `${trimCm(setup.marginBottom)}cm ${trimCm(setup.marginLeft)}cm`;
+
+    const page = `@page { size: ${size}; margin: ${margins}; ${marks} }`;
 
     /* какие страницы уйдут на печать и в каком порядке */
     const wanted = pagesToPrint(print, stats.pages, currentPage);
@@ -651,7 +665,11 @@ const Editor = () => {
       bodyCss: `${frame}\n.pv-page-break{page-break-before:always}`,
       contentHeight: contentHeight,
       contentWidth:
-        (setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH) - setup.margin * CM * 2,
+        pagePixels(
+          { width: setup.paperWidth, height: setup.paperHeight },
+          setup.landscape,
+        ).width -
+        (setup.marginLeft + setup.marginRight) * CM,
       pageWidth: setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH,
       pageHeight: setup.landscape ? PAGE_WIDTH : PAGE_HEIGHT,
       padding: setup.margin * CM,

@@ -392,29 +392,43 @@ const paraToHtml = (
 const paraCss = (props: string): string => {
   const css: string[] = [];
 
+  /*
+   * Выравнивание. «Влево» тоже записываем: стиль абзаца может так
+   * отменять выравнивание, заданное для всего документа.
+   */
   const align = props.match(/<w:jc[^>]*w:val="(\w+)"/)?.[1];
   if (align === 'center') css.push('text-align:center');
-  else if (align === 'right') css.push('text-align:right');
-  else if (align === 'both') css.push('text-align:justify');
+  else if (align === 'right' || align === 'end') css.push('text-align:right');
+  else if (align === 'both' || align === 'distribute')
+    css.push('text-align:justify');
+  else if (align === 'left' || align === 'start') css.push('text-align:left');
 
   /* отступы абзаца */
   const ind = props.match(/<w:ind\b[^>]*\/?>/)?.[0] ?? '';
 
-  const left = ind.match(/w:left="(-?\d+)"/)?.[1];
-  if (left && Number(left) !== 0)
+  /*
+   * Ноль здесь — не «не задано», а осознанная отмена: стиль абзаца
+   * так убирает отступ, заданный для всего документа.
+   */
+  const left =
+    ind.match(/w:left="(-?\d+)"/)?.[1] ?? ind.match(/w:start="(-?\d+)"/)?.[1];
+
+  if (left !== undefined)
     css.push(`margin-left:${trim(twipsToCm(left))}cm`);
 
-  const right = ind.match(/w:right="(-?\d+)"/)?.[1];
-  if (right && Number(right) !== 0)
+  const right =
+    ind.match(/w:right="(-?\d+)"/)?.[1] ?? ind.match(/w:end="(-?\d+)"/)?.[1];
+
+  if (right !== undefined)
     css.push(`margin-right:${trim(twipsToCm(right))}cm`);
 
   /* красная строка либо выступ */
-  const firstLine = ind.match(/w:firstLine="(\d+)"/)?.[1];
-  const hanging = ind.match(/w:hanging="(\d+)"/)?.[1];
+  const firstLine = ind.match(/w:firstLine="(-?\d+)"/)?.[1];
+  const hanging = ind.match(/w:hanging="(-?\d+)"/)?.[1];
 
-  if (hanging && Number(hanging) !== 0)
+  if (hanging !== undefined && Number(hanging) !== 0)
     css.push(`text-indent:-${trim(twipsToCm(hanging))}cm`);
-  else if (firstLine && Number(firstLine) !== 0)
+  else if (firstLine !== undefined)
     css.push(`text-indent:${trim(twipsToCm(firstLine))}cm`);
 
   /* интервалы до и после абзаца */
@@ -427,6 +441,10 @@ const paraCss = (props: string): string => {
   const after = sp.match(/w:after="(\d+)"/)?.[1];
   if (after !== undefined)
     css.push(`margin-bottom:${trim(Number(after) / 20)}pt`);
+
+  /* Word не добавляет отбивку сам: чего нет в файле — того нет */
+  if (before === undefined) css.push('margin-top:0');
+  if (after === undefined) css.push('margin-bottom:0');
 
   /* междустрочный интервал */
   const line = sp.match(/w:line="(\d+)"/)?.[1];
@@ -1027,6 +1045,11 @@ export const docxToHtml = (bytes: Uint8Array): string | null => {
 
   const html = wrapLists(parts.join(''));
   const body_html = html.trim() || '<p><br></p>';
+
+  /*
+   * Метка «текст из файла»: интервалы между абзацами описаны в самом
+   * документе, и лист не должен добавлять к ним свои.
+   */
 
   /*
    * Шрифт всего документа переносим в каждый абзац: общая обёртка
