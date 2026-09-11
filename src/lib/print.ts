@@ -187,6 +187,34 @@ export interface PrintDocOptions {
   landscape: boolean;
 }
 
+/**
+ * Собирает правила оформления листа из стилей программы, чтобы
+ * в отдельном окне печати текст выглядел так же, как на экране.
+ */
+export const collectPageCss = (): string => {
+  if (typeof document === 'undefined') return '';
+
+  const out: string[] = [];
+
+  for (const sheet of Array.from(document.styleSheets)) {
+    let rules: CSSRuleList;
+
+    /* стили с чужого домена читать нельзя — просто пропускаем */
+    try {
+      rules = sheet.cssRules;
+    } catch {
+      continue;
+    }
+
+    for (const rule of Array.from(rules)) {
+      const text = rule.cssText;
+      if (text.includes('.pv-page') || text.includes('--pv-')) out.push(text);
+    }
+  }
+
+  return out.join('\n');
+};
+
 export const buildPrintHtml = (o: PrintDocOptions): string => {
   const { setup: s } = o;
   const [cols, rows] = sheetGrid(s.pagesPerSheet);
@@ -199,9 +227,13 @@ export const buildPrintHtml = (o: PrintDocOptions): string => {
   /* уменьшаем каждую страницу, чтобы она поместилась в свою ячейку */
   const cellScale = 1 / Math.max(cols, rows);
 
+  /*
+   * Класс листа обязателен: к нему привязано всё оформление абзацев,
+   * списков и таблиц. Без него на бумагу уйдёт неоформленный текст.
+   */
   const sheets = many
     ? buildSheets(o, cols, rows, cellScale)
-    : `<div class="pv-flow">${o.body}</div>`;
+    : `<div class="pv-page pv-flow">${o.body}</div>`;
 
   const hidden = s.background
     ? ''
@@ -212,8 +244,9 @@ export const buildPrintHtml = (o: PrintDocOptions): string => {
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${escapeHtml(
     o.title,
   )}</title><style>
+${collectPageCss()}
 ${o.pageCss}
-body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;margin:0;zoom:${s.scale / 100}}
+body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.15;margin:0;zoom:${s.scale / 100}}
 ${o.bodyCss}
 ${hidden}
 ${noArt}
