@@ -226,7 +226,35 @@ const Editor = () => {
       ? last.offsetTop - el.offsetTop + last.offsetHeight
       : el.scrollHeight;
 
-    const pages = Math.max(1, Math.ceil((filled - 2) / contentHeight));
+    /*
+     * Принудительные разрывы: текст после них уходит на новый лист,
+     * поэтому считаем страницы по отрезкам между разрывами.
+     */
+    const marks = [
+      ...el.querySelectorAll<HTMLElement>(
+        '.pv-break[data-break="page"],.pv-break[data-break^="section"]',
+      ),
+    ];
+
+    let pages: number;
+
+    if (marks.length) {
+      let used = 0;
+      let start = 0;
+
+      for (const mark of marks) {
+        const end = mark.offsetTop - el.offsetTop;
+        used += Math.max(1, Math.ceil((end - start) / contentHeight));
+        start = end;
+      }
+
+      /* последний отрезок — от последнего разрыва до конца текста */
+      used += Math.max(1, Math.ceil((filled - start) / contentHeight));
+      pages = Math.max(1, used);
+    } else {
+      pages = Math.max(1, Math.ceil((filled - 2) / contentHeight));
+    }
+
     setStats({ words, chars, pages });
   }, [contentHeight]);
 

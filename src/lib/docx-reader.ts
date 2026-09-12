@@ -112,7 +112,30 @@ const runToHtml = (
     .map((m) => m[1])
     .join('');
 
-  const breaks = /<w:br\b/.test(run) ? '<br>' : '';
+  /*
+   * Разрыв страницы и разрыв колонки — не то же самое, что перенос
+   * строки: без этого многостраничный документ склеивается в один лист.
+   */
+  const breaks = [...run.matchAll(/<w:br\b([^>]*)\/?>/g)]
+    .map((m) => {
+      const type = m[1].match(/w:type="(\w+)"/)?.[1];
+
+      /* используем ту же разметку, что и разрывы, вставленные вручную */
+      if (type === 'page')
+        return (
+          '<div class="pv-break" data-break="page" contenteditable="false" ' +
+          'title="Разрыв страницы"><span>Разрыв страницы</span></div>'
+        );
+
+      if (type === 'column')
+        return (
+          '<div class="pv-break" data-break="column" contenteditable="false" ' +
+          'title="Разрыв колонки"><span>Разрыв колонки</span></div>'
+        );
+
+      return '<br>';
+    })
+    .join('');
   /*
    * Табуляция — переход к заданной позиции, а не несколько пробелов:
    * иначе линии для заполнения от руки съезжают по длине.

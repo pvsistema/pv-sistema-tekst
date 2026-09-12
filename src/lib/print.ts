@@ -248,6 +248,15 @@ ${collectPageCss()}
 ${o.pageCss}
 body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.15;margin:0;zoom:${s.scale / 100}}
 ${o.bodyCss}
+/*
+ * Разрыв страницы: на бумаге его роль исполняет сам переход на новый
+ * лист, поэтому подложка и растянутая высота с экрана не нужны.
+ */
+.pv-break[data-break="page"],
+.pv-break[data-break^="section"]{height:0 !important;margin:0;border:0;
+page-break-after:always;break-after:page}
+.pv-break[data-break="column"]{height:0 !important;break-after:column}
+.pv-break > span{display:none !important}
 ${hidden}
 ${noArt}
 table{border-collapse:collapse;width:100%}
