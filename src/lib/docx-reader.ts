@@ -839,6 +839,22 @@ const alignOf = (xml: string): 'left' | 'center' | 'right' => {
  * Текст колонтитула без служебных полей. Поле с номером страницы
  * заменяем нашей пометкой — редактор подставит настоящий номер.
  */
+/**
+ * Убирает из колонтитула подпись к номеру страницы: сам номер
+ * подставит редактор, иначе на листе выйдет «Стр. 1 1».
+ */
+const stripPageWord = (text: string): string => {
+  const clean = text
+    /* остатки вида «Стр. 1», «Страница 2 из», «Page 3» */
+    .replace(/(стр|страница|page)\.?\s*\d*\s*(из|of)?\s*\d*/gi, ' ')
+    .replace(/^\s*\d+\s*$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  /* если остались только знаки препинания — колонтитул пуст */
+  return /[\p{L}\p{N}]/u.test(clean) ? clean : '';
+};
+
 const furnitureText = (xml: string): { text: string; hasNumber: boolean } => {
   const hasNumber = /\bPAGE\b/.test(xml) && !/NUMPAGES/.test(xml);
 
@@ -848,10 +864,13 @@ const furnitureText = (xml: string): { text: string; hasNumber: boolean } => {
    * подставит редактор.
    */
   const clean = hasNumber
-    ? xml.replace(
-        /<w:fldChar[^>]*w:fldCharType="begin"[\s\S]*?<w:fldChar[^>]*w:fldCharType="end"[^>]*\/>/g,
-        '',
-      )
+    ? xml
+        .replace(
+          /<w:fldChar[^>]*w:fldCharType="begin"[\s\S]*?<w:fldChar[^>]*w:fldCharType="end"[^>]*\/>/g,
+          '',
+        )
+        /* краткая запись поля: <w:fldSimple w:instr=" PAGE ">…</w:fldSimple> */
+        .replace(/<w:fldSimple\b[^>]*>[\s\S]*?<\/w:fldSimple>/g, '')
     : xml;
 
   const text = [...clean.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)]
@@ -991,7 +1010,7 @@ export const docxExtras = (bytes: Uint8Array): DocxExtras | null => {
     if (header.hasNumber) {
       out.numberPosition = `top-${header.align}` as DocxExtras['numberPosition'];
       /* номер вставит редактор — одинокую цифру из текста убираем */
-      out.headerText = header.text.replace(/^\s*\d+\s*$/, '').trim();
+      out.headerText = stripPageWord(header.text);
     }
   }
 
@@ -1002,7 +1021,7 @@ export const docxExtras = (bytes: Uint8Array): DocxExtras | null => {
     if (footer.hasNumber) {
       out.numberPosition =
         `bottom-${footer.align}` as DocxExtras['numberPosition'];
-      out.footerText = footer.text.replace(/^\s*\d+\s*$/, '').trim();
+      out.footerText = stripPageWord(footer.text);
     }
   }
 

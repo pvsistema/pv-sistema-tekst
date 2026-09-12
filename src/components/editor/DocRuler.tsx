@@ -4,7 +4,10 @@ import { TAB_ALIGN_LABELS } from '@/lib/tab-stops';
 interface Props {
   zoom: number;
   pageWidth: number;
+  /** Левое поле листа в пикселях */
   padding: number;
+  /** Правое поле листа: в документе оно может отличаться от левого */
+  paddingRight?: number;
   /** Позиции табуляции текущего абзаца */
   tabStops?: TabStop[];
   /** Тип, который поставится при щелчке по линейке */
@@ -27,6 +30,7 @@ const DocRuler = ({
   zoom,
   pageWidth,
   padding,
+  paddingRight,
   tabStops = [],
   tabAlign = 'left',
   onTabAlign,
@@ -36,8 +40,11 @@ const DocRuler = ({
   const scale = zoom / 100;
   const width = pageWidth * scale;
   const pad = padding * scale;
+  const padRight = (paddingRight ?? padding) * scale;
   const cm = 37.8 * scale;
-  const marks = Math.floor((width - pad * 2) / cm);
+
+  /* деления считаем по настоящей ширине полосы набора */
+  const marks = Math.floor((width - pad - padRight) / cm);
 
   const current = TAB_ALIGN_LABELS.find((t) => t.value === tabAlign);
 
@@ -73,7 +80,7 @@ const DocRuler = ({
         <div className="absolute inset-0 rounded-[1px] bg-[hsl(0_0%_78%)]" />
         <div
           className="absolute inset-y-0 rounded-[1px] border border-[hsl(0_0%_66%)] bg-white"
-          style={{ left: pad, right: pad }}
+          style={{ left: pad, right: padRight }}
         />
 
         {Array.from({ length: marks }, (_, i) => (

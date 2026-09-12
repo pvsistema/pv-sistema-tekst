@@ -4,6 +4,7 @@ import { useDocuments } from '@/hooks/use-documents';
 import WindowTitleBar from '@/components/editor/WindowTitleBar';
 import Ribbon, { RibbonTab } from '@/components/editor/Ribbon';
 import DocRuler from '@/components/editor/DocRuler';
+import DocRulerVertical from '@/components/editor/DocRulerVertical';
 import DocumentCanvas, {
   CM,
   PAGE_HEIGHT,
@@ -1171,8 +1172,14 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
       {showRuler && viewMode === 'print' && (
         <DocRuler
           zoom={zoom}
-          pageWidth={setup.landscape ? PAGE_HEIGHT : PAGE_WIDTH}
-          padding={setup.margin * CM}
+          pageWidth={
+            pagePixels(
+              { width: setup.paperWidth, height: setup.paperHeight },
+              setup.landscape,
+            ).width
+          }
+          padding={(setup.marginLeft + setup.gutter) * CM}
+          paddingRight={setup.marginRight * CM}
           tabStops={tabs.stops}
           tabAlign={tabs.align}
           onTabAlign={tabs.cycleAlign}
@@ -1188,6 +1195,15 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
             onGo={goToHeading}
             onClose={() => setShowNav(false)}
             refreshKey={stats.words}
+          />
+        )}
+
+        {showRuler && viewMode === 'print' && (
+          <DocRulerVertical
+            zoom={zoom}
+            pageHeight={pageHeight}
+            paddingTop={setup.marginTop * CM}
+            paddingBottom={setup.marginBottom * CM}
           />
         )}
 
