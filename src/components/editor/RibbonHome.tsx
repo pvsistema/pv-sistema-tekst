@@ -262,7 +262,12 @@ const RibbonHome = (p: RibbonHomeProps) => {
     <RibbonGroup title="Абзац" onDialog={p.onParaDialog}>
       <VStack>
         <Row>
-          <SplitBtn icon="List" title="Маркированный список" onClick={p.onBullets}>
+          <SplitBtn
+            icon="List"
+            title="Маркированный список"
+            active={p.format?.bullet}
+            onClick={p.onBullets}
+          >
             {(close) => (
               <>
                 <p className="mb-1.5 text-[10px] text-slate-500">
@@ -291,6 +296,7 @@ const RibbonHome = (p: RibbonHomeProps) => {
           <SplitBtn
             icon="ListOrdered"
             title="Нумерованный список"
+            active={p.format?.numbered}
             onClick={p.onNumbering}
             width={200}
           >
@@ -343,10 +349,30 @@ const RibbonHome = (p: RibbonHomeProps) => {
           />
         </Row>
         <Row>
-          <SmallBtn icon="AlignLeft" title="По левому краю" onClick={() => p.onCommand('justifyLeft')} />
-          <SmallBtn icon="AlignCenter" title="По центру" onClick={() => p.onCommand('justifyCenter')} />
-          <SmallBtn icon="AlignRight" title="По правому краю" onClick={() => p.onCommand('justifyRight')} />
-          <SmallBtn icon="AlignJustify" title="По ширине" onClick={() => p.onCommand('justifyFull')} />
+          <SmallBtn
+            icon="AlignLeft"
+            title="По левому краю (Ctrl+L)"
+            active={p.format?.align === 'left'}
+            onClick={() => p.onCommand('justifyLeft')}
+          />
+          <SmallBtn
+            icon="AlignCenter"
+            title="По центру (Ctrl+E)"
+            active={p.format?.align === 'center'}
+            onClick={() => p.onCommand('justifyCenter')}
+          />
+          <SmallBtn
+            icon="AlignRight"
+            title="По правому краю (Ctrl+R)"
+            active={p.format?.align === 'right'}
+            onClick={() => p.onCommand('justifyRight')}
+          />
+          <SmallBtn
+            icon="AlignJustify"
+            title="По ширине (Ctrl+J)"
+            active={p.format?.align === 'justify'}
+            onClick={() => p.onCommand('justifyFull')}
+          />
           <Menu
             icon="StretchVertical"
             title="Междустрочный интервал"
