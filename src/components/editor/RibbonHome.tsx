@@ -92,23 +92,41 @@ const Combo = ({
   onChange: (v: string) => void;
   options: string[];
   width: number;
-}) => (
-  <select
-    value={value}
-    onMouseDown={(e) => e.stopPropagation()}
-    onChange={(e) => onChange(e.target.value)}
-    style={{ width }}
-    className="h-[22px] rounded-[2px] border border-[hsl(var(--win-ribbon-border))] bg-white px-1 text-[11px] text-[hsl(0_0%_15%)] outline-none focus:border-[hsl(var(--win-title))]"
-  >
-    {options.map((o) => (
-      <option key={o} value={o}>
-        {o}
-      </option>
-    ))}
-  </select>
-);
+}) => {
+  /*
+   * В документе бывают шрифты и размеры вне готового списка — например
+   * 13 пунктов. Добавляем текущее значение, иначе поле будет пустым.
+   * Пустая строка — это разное оформление в выделении, как в Word.
+   */
+  const list = value && !options.includes(value) ? [value, ...options] : options;
 
-const RibbonHome = (p: RibbonHomeProps) => (
+  return (
+    <select
+      value={value}
+      onMouseDown={(e) => e.stopPropagation()}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ width }}
+      className="h-[22px] rounded-[2px] border border-[hsl(var(--win-ribbon-border))] bg-white px-1 text-[11px] text-[hsl(0_0%_15%)] outline-none focus:border-[hsl(var(--win-title))]"
+    >
+      {!value && <option value="" />}
+      {list.map((o) => (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+const RibbonHome = (p: RibbonHomeProps) => {
+  /*
+   * В полях показываем оформление текста под курсором, а если его
+   * определить не удалось — последний выбор пользователя.
+   */
+  const shownFont = p.format?.fontName ?? p.fontFamily;
+  const shownSize = p.format?.fontSize ?? p.fontSize;
+
+  return (
   <>
     <RibbonGroup title="Буфер обмена">
       <BigBtn icon="ClipboardPaste" label="Вставить" onClick={p.onPaste} />
@@ -140,21 +158,30 @@ const RibbonHome = (p: RibbonHomeProps) => (
       <VStack>
         <Row>
           <Combo
-            value={p.fontFamily}
+            value={shownFont}
             onChange={p.onFontFamily}
             options={FONTS}
             width={132}
           />
-          <Combo value={p.fontSize} onChange={p.onFontSize} options={SIZES} width={46} />
+          <Combo
+            value={shownSize}
+            onChange={p.onFontSize}
+            options={SIZES}
+            width={46}
+          />
           <SmallBtn
             icon="AArrowUp"
             title="Увеличить размер"
-            onClick={() => p.onFontSize(String(Math.min(72, Number(p.fontSize) + 2)))}
+            onClick={() =>
+              p.onFontSize(String(Math.min(72, Number(shownSize || 12) + 2)))
+            }
           />
           <SmallBtn
             icon="AArrowDown"
             title="Уменьшить размер"
-            onClick={() => p.onFontSize(String(Math.max(8, Number(p.fontSize) - 2)))}
+            onClick={() =>
+              p.onFontSize(String(Math.max(8, Number(shownSize || 12) - 2)))
+            }
           />
           <Menu
             icon="CaseSensitive"
@@ -443,8 +470,9 @@ const RibbonHome = (p: RibbonHomeProps) => (
         />
       </VStack>
     </RibbonGroup>
-  </>
-);
+    </>
+  );
+};
 
 export { FONT_VALUE, FONTS, SIZES };
 export default RibbonHome;
