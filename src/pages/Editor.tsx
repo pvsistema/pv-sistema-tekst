@@ -6,6 +6,9 @@ import Ribbon, { RibbonTab } from '@/components/editor/Ribbon';
 import DocRuler from '@/components/editor/DocRuler';
 import DocRulerVertical from '@/components/editor/DocRulerVertical';
 import { useMarginDrag } from '@/hooks/use-margin-drag';
+import { countObjects, goToPage, selectSameFormat } from '@/lib/select-tools';
+import { useClipboardPane } from '@/hooks/use-clipboard-pane';
+import ClipboardPane from '@/components/editor/ClipboardPane';
 import DocumentCanvas, {
   CM,
   PAGE_HEIGHT,
@@ -44,6 +47,7 @@ import { useEquation } from '@/hooks/use-equation';
 import { useCharts } from '@/hooks/use-charts';
 import ChartDialog from '@/components/editor/ChartDialog';
 import PageSetupDialog from '@/components/editor/PageSetupDialog';
+import GoToDialog from '@/components/editor/GoToDialog';
 import { useOutline } from '@/hooks/use-outline';
 import { useContextMenu } from '@/hooks/use-context-menu';
 import DocumentContextMenu from '@/components/editor/DocumentContextMenu';
@@ -203,6 +207,17 @@ const Editor = () => {
     (patch: Partial<PageSetup>) => setSetup((s) => ({ ...s, ...patch })),
     [],
   );
+
+  /* область буфера обмена: помнит последние копирования */
+  const clipboard = useClipboardPane({ editorRef });
+
+  /* окно перехода к странице по номеру */
+  const [goToOpen, setGoToOpen] = useState(false);
+
+  /* последние выбранные цвета — кнопка применяет их повторно, как в Word */
+  const [textColor, setTextColor] = useState('#c00000');
+  const [highlightColor, setHighlightColor] = useState('#ffff00');
+  const [shadingColor, setShadingColor] = useState('#dbe5f1');
 
   /* перетаскивание полей мышью по линейкам */
   const marginDrag = useMarginDrag({
@@ -1038,12 +1053,43 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         tab={tab}
         onTab={setTab}
         onFileMenu={() => setFileMenu(true)}
-        onCommand={exec}
+        onCommand={(command, value) => {
+          /* запоминаем цвет, чтобы кнопка применяла его следующим щелчком */
+          if (command === 'foreColor' && value) setTextColor(value);
+          if (command === 'hiliteColor' && value) setHighlightColor(value);
+          exec(command, value);
+        }}
         fontFamily={fontFamily}
         fontSize={fontSize}
         onFontFamily={applyFontFamily}
         onFontSize={applyFontSize}
         onUnderline={fmt.applyUnderline}
+        onFormatPainterLock={fmt.lockFormat}
+        onClipboardPane={() => clipboard.setOpen((v) => !v)}
+        onGoTo={() => setGoToOpen(true)}
+        onSelectObjects={() => {
+          const n = countObjects(editorRef.current);
+
+          if (!n) {
+            toast({
+              title: 'Объектов нет',
+              description: 'В документе не найдено картинок и таблиц',
+            });
+            return;
+          }
+
+          exec('selectAll');
+          toast({ title: `Объектов в документе: ${n}` });
+        }}
+        onSelectSameFormat={() => {
+          const n = selectSameFormat(editorRef.current);
+
+          toast(
+            n
+              ? { title: `Выделено фрагментов: ${n}`, description: 'С таким же оформлением' }
+              : { title: 'Поставьте курсор в текст' },
+          );
+        }}
         onFind={() => setFindOpen(true)}
         onReplace={() => setFindOpen(true)}
         onPaste={handlePaste}
@@ -1123,7 +1169,13 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onRestartNumbering={fmt.restartNumbering}
         onBorders={borders.open}
         onBorderSide={borders.quickSide}
-        onShading={borders.shade}
+        textColor={textColor}
+        highlightColor={highlightColor}
+        shadingColor={shadingColor}
+        onShading={(c) => {
+          setShadingColor(c);
+          borders.shade(c);
+        }}
         onInsertTable={insertTable}
         onInsertImage={insertImage}
         onPrint={handlePrint}
@@ -1261,6 +1313,15 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
       )}
 
       <div className="flex min-h-0 flex-1">
+        <ClipboardPane
+          open={clipboard.open}
+          items={clipboard.items}
+          onClose={() => clipboard.setOpen(false)}
+          onPaste={(html) => exec('insertHTML', html)}
+          onRemove={clipboard.removeOne}
+          onClear={clipboard.clear}
+        />
+
         {showNav && (
           <NavigationPane
             getHeadings={getHeadings}
@@ -1413,6 +1474,18 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onFontSize={applyFontSize}
         onHighlight={() => exec('hiliteColor', '#ffff00')}
         onStyle={fmt.openFont}
+      />
+
+      <GoToDialog
+        open={goToOpen}
+        pages={stats.pages}
+        onClose={() => setGoToOpen(false)}
+        onGo={(page) => {
+          if (goToPage(editorRef.current, page, contentHeight)) {
+            setCurrentPage(page);
+            toast({ title: `Переход на страницу ${page}` });
+          }
+        }}
       />
 
       <PageSetupDialog

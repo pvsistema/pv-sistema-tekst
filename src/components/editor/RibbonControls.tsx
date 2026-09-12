@@ -35,6 +35,7 @@ export const SmallBtn = ({
   icon,
   title,
   onClick,
+  onDoubleClick,
   active,
   label,
   letter,
@@ -43,6 +44,8 @@ export const SmallBtn = ({
   icon?: string;
   title: string;
   onClick?: () => void;
+  /** Двойной щелчок — например, закрепление формата по образцу */
+  onDoubleClick?: () => void;
   active?: boolean;
   label?: string;
   /** Буква вместо значка — как Ж, К и Ч в русском Word */
@@ -56,6 +59,7 @@ export const SmallBtn = ({
     data-active={active ? 'true' : 'false'}
     onMouseDown={(e) => e.preventDefault()}
     onClick={onClick}
+    onDoubleClick={onDoubleClick}
     className="win-btn h-[22px] gap-1 px-1"
   >
     {letter ? (

@@ -14,6 +14,7 @@ import { PASTE_MODES } from '@/lib/clipboard';
 import { PARA_SPACING_SETS } from '@/lib/doc-styles';
 import type { DocStyle } from '@/lib/doc-styles';
 import { styleCss } from '@/lib/doc-styles';
+import ColorPicker from './ColorPicker';
 import type { FormatState } from '@/hooks/use-format-state';
 
 const FONTS = [
@@ -54,6 +55,18 @@ export interface RibbonHomeProps {
   fontFamily: string;
   /* что включено там, где стоит курсор */
   format?: FormatState;
+  /** Уголок группы «Буфер обмена» — открывает область буфера */
+  onClipboardPane?: () => void;
+  /** Пункты меню «Найти» и «Выделить» */
+  onGoTo?: () => void;
+  onSelectObjects?: () => void;
+  onSelectSameFormat?: () => void;
+  /** Двойной щелчок по «Формат по образцу» — закрепить режим */
+  onFormatPainterLock?: () => void;
+  /** Последние выбранные цвета — показываются полоской на кнопке */
+  textColor?: string;
+  highlightColor?: string;
+  shadingColor?: string;
   /** Выбор вида линии подчёркивания */
   onUnderline?: (
     kind: 'none' | 'single' | 'double' | 'dotted' | 'dashed' | 'wavy',
@@ -145,7 +158,7 @@ const RibbonHome = (p: RibbonHomeProps) => {
 
   return (
   <>
-    <RibbonGroup title="Буфер обмена">
+    <RibbonGroup title="Буфер обмена" onDialog={p.onClipboardPane}>
       <BigBtn icon="ClipboardPaste" label="Вставить" onClick={p.onPaste} />
       <VStack>
         <Menu
@@ -163,10 +176,11 @@ const RibbonHome = (p: RibbonHomeProps) => {
         <SmallBtn icon="Copy" title="Копировать" label="Копировать" onClick={p.onCopy} />
         <SmallBtn
           icon="Paintbrush"
-          title="Формат по образцу"
+          title="Формат по образцу. Двойной щелчок — применять много раз"
           label="Формат по образцу"
           active={p.hasSample}
           onClick={p.onFormatPainter}
+          onDoubleClick={p.onFormatPainterLock}
         />
       </VStack>
     </RibbonGroup>
@@ -292,24 +306,22 @@ const RibbonHome = (p: RibbonHomeProps) => {
             active={p.format?.sup}
             onClick={() => p.onCommand('superscript')}
           />
-          <label className="win-btn h-[22px] cursor-pointer px-1" title="Цвет выделения">
-            <Icon name="Highlighter" size={15} />
-            <input
-              type="color"
-              defaultValue="#ffff00"
-              onChange={(e) => p.onCommand('hiliteColor', e.target.value)}
-              className="h-0 w-0 opacity-0"
-            />
-          </label>
-          <label className="win-btn h-[22px] cursor-pointer px-1" title="Цвет текста">
-            <Icon name="Baseline" size={15} />
-            <input
-              type="color"
-              defaultValue="#c00000"
-              onChange={(e) => p.onCommand('foreColor', e.target.value)}
-              className="h-0 w-0 opacity-0"
-            />
-          </label>
+          <ColorPicker
+            icon="Highlighter"
+            title="Цвет выделения текста"
+            value={p.highlightColor ?? '#ffff00'}
+            onChange={(c) => p.onCommand('hiliteColor', c)}
+            resetLabel="Нет цвета"
+            resetValue="transparent"
+          />
+          <ColorPicker
+            icon="Baseline"
+            title="Цвет текста"
+            value={p.textColor ?? '#c00000'}
+            onChange={(c) => p.onCommand('foreColor', c)}
+            resetLabel="Авто"
+            resetValue="#000000"
+          />
         </Row>
       </VStack>
     </RibbonGroup>
@@ -541,13 +553,48 @@ const RibbonHome = (p: RibbonHomeProps) => {
 
     <RibbonGroup title="Редактирование">
       <VStack>
-        <SmallBtn icon="Search" title="Найти" label="Найти" onClick={p.onFind} />
+        <Menu
+          icon="Search"
+          title="Найти"
+          label="Найти"
+          width={230}
+          items={[
+            { label: 'Найти…', hint: 'Ctrl+F', run: p.onFind },
+            {
+              label: 'Расширенный поиск…',
+              hint: 'Поиск с учётом регистра',
+              run: p.onFind,
+            },
+            {
+              label: 'Перейти…',
+              hint: 'К странице по номеру',
+              run: () => p.onGoTo?.(),
+            },
+          ]}
+        />
         <SmallBtn icon="Replace" title="Заменить" label="Заменить" onClick={p.onReplace} />
-        <SmallBtn
+        <Menu
           icon="TextSelect"
           title="Выделить"
           label="Выделить"
-          onClick={() => p.onCommand('selectAll')}
+          width={270}
+          items={[
+            {
+              label: 'Выделить всё',
+              hint: 'Ctrl+A',
+              run: () => p.onCommand('selectAll'),
+            },
+            {
+              label: 'Выделить объекты',
+              hint: 'Картинки и таблицы документа',
+              run: () => p.onSelectObjects?.(),
+            },
+            {
+              label: 'Выделить текст с одинаковым форматированием',
+              hint: 'По оформлению под курсором',
+              run: () => p.onSelectSameFormat?.(),
+            },
+          ]}
         />
       </VStack>
     </RibbonGroup>

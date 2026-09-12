@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { CharFormat, ParaFormat } from '@/lib/text-format';
 import {
   DEFAULT_CHAR,
@@ -268,6 +268,10 @@ export const useFormat = ({ editorRef, exec, recount, notify }: Options) => {
   /** Формат по образцу: запоминает оформление и переносит на другой текст */
   const [sample, setSample] = useState<CharFormat | null>(null);
 
+  /* Режим «прилипания»: двойной щелчок в Word позволяет применять
+     формат много раз, пока не выключишь кнопку. */
+  const [sticky, setSticky] = useState(false);
+
   const copyFormat = useCallback(() => {
     const f = readCharFormat(root());
     setSample(f);
@@ -275,7 +279,27 @@ export const useFormat = ({ editorRef, exec, recount, notify }: Options) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notify]);
 
+  /** Двойной щелчок по кнопке — многократное применение формата */
+  const lockFormat = useCallback(() => {
+    const f = readCharFormat(root());
+    setSample(f);
+    setSticky(true);
+    notify(
+      'Формат по образцу закреплён',
+      'Применяйте к любому тексту. Нажмите кнопку ещё раз, чтобы выключить',
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notify]);
+
   const pasteFormat = useCallback(() => {
+    /* закреплённый режим выключается повторным нажатием кнопки */
+    if (sticky) {
+      setSticky(false);
+      setSample(null);
+      notify('Формат по образцу выключен');
+      return;
+    }
+
     if (!sample) {
       copyFormat();
       return;
@@ -288,7 +312,29 @@ export const useFormat = ({ editorRef, exec, recount, notify }: Options) => {
       notify('Выделите текст');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sample, copyFormat, recount, notify]);
+  }, [sample, sticky, copyFormat, recount, notify]);
+
+  /*
+   * Пока режим закреплён, каждое новое выделение получает образец —
+   * достаточно провести мышью по тексту.
+   */
+  useEffect(() => {
+    if (!sticky || !sample) return;
+
+    const el = editorRef.current;
+    if (!el) return;
+
+    const apply = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+
+      if (applyCharFormat(el, sample)) recount();
+    };
+
+    el.addEventListener('mouseup', apply);
+    return () => el.removeEventListener('mouseup', apply);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sticky, sample, recount]);
 
   return {
     fontOpen,
@@ -314,6 +360,9 @@ export const useFormat = ({ editorRef, exec, recount, notify }: Options) => {
     sortList,
     copyFormat,
     pasteFormat,
+    lockFormat,
+    /** Закреплён ли режим многократного применения */
+    formatSticky: sticky,
     hasSample: !!sample,
     lineHeightOf,
     selectedParagraph,
