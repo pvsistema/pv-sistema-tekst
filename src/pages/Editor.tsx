@@ -48,6 +48,11 @@ import { useCharts } from '@/hooks/use-charts';
 import ChartDialog from '@/components/editor/ChartDialog';
 import PageSetupDialog from '@/components/editor/PageSetupDialog';
 import GoToDialog from '@/components/editor/GoToDialog';
+import LinkDialog from '@/components/editor/LinkDialog';
+import DropCapDialog from '@/components/editor/DropCapDialog';
+import { useLinks } from '@/hooks/use-links';
+import type { DropCapSetup } from '@/lib/drop-cap';
+import { applyDropCap, paragraphAtCursor } from '@/lib/drop-cap';
 import { useOutline } from '@/hooks/use-outline';
 import { useContextMenu } from '@/hooks/use-context-menu';
 import DocumentContextMenu from '@/components/editor/DocumentContextMenu';
@@ -213,6 +218,10 @@ const Editor = () => {
 
   /* окно перехода к странице по номеру */
   const [goToOpen, setGoToOpen] = useState(false);
+
+  /* буквица: запоминаем абзац, пока открыто окно настроек */
+  const [dropCapOpen, setDropCapOpen] = useState(false);
+  const dropCapPara = useRef<HTMLElement | null>(null);
 
   /* последние выбранные цвета — кнопка применяет их повторно, как в Word */
   const [textColor, setTextColor] = useState('#c00000');
@@ -388,6 +397,14 @@ const Editor = () => {
     },
     [recount],
   );
+
+  /* гиперссылки: своё окно вместо системного prompt */
+  const links = useLinks({
+    editorRef,
+    exec,
+    recount,
+    notify: (title, description) => toast({ title, description }),
+  });
 
   const refs = useReferences({
     editorRef,
@@ -1066,6 +1083,21 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onUnderline={fmt.applyUnderline}
         onFormatPainterLock={fmt.lockFormat}
         onClipboardPane={() => clipboard.setOpen((v) => !v)}
+        onLink={links.openDialog}
+        onDropCap={() => {
+          const para = paragraphAtCursor(editorRef.current);
+
+          if (!para) {
+            toast({
+              title: 'Поставьте курсор в абзац',
+              description: 'Буквица делает крупной первую букву абзаца',
+            });
+            return;
+          }
+
+          dropCapPara.current = para;
+          setDropCapOpen(true);
+        }}
         onGoTo={() => setGoToOpen(true)}
         onSelectObjects={() => {
           const n = countObjects(editorRef.current);
@@ -1455,10 +1487,7 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onInsertColumn={() => tables.addColumn('right')}
         onDeleteRow={tables.removeRow}
         onDeleteColumn={tables.removeColumn}
-        onLink={() => {
-          const url = window.prompt('Адрес ссылки', 'https://');
-          if (url) exec('createLink', url);
-        }}
+        onLink={links.openDialog}
         onImageWidth={images.setWidthPercent}
         onImageDelete={images.removeImage}
         onComment={review.newComment}
@@ -1474,6 +1503,37 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onFontSize={applyFontSize}
         onHighlight={() => exec('hiliteColor', '#ffff00')}
         onStyle={fmt.openFont}
+      />
+
+      <LinkDialog
+        open={links.open}
+        initial={links.initial}
+        headings={getHeadings()}
+        canRemove={links.canRemove}
+        onClose={() => links.setOpen(false)}
+        onApply={links.apply}
+        onRemove={links.remove}
+      />
+
+      <DropCapDialog
+        open={dropCapOpen}
+        onClose={() => setDropCapOpen(false)}
+        onApply={(setup: DropCapSetup) => {
+          const para = dropCapPara.current;
+          if (!para) return;
+
+          if (applyDropCap(para, setup)) {
+            recount();
+            toast({
+              title:
+                setup.kind === 'none' ? 'Буквица убрана' : 'Буквица применена',
+              description:
+                setup.kind === 'none'
+                  ? undefined
+                  : `Высота ${setup.lines} строки`,
+            });
+          }
+        }}
       />
 
       <GoToDialog

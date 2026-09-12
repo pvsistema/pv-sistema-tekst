@@ -26,6 +26,10 @@ export interface TabActions {
   onEquationNew?: (display: boolean) => void;
   /** Вставка диаграммы */
   onChart?: () => void;
+  /** Окно «Гиперссылка» вместо системного prompt */
+  onLink?: () => void;
+  /** Окно «Буквица» — крупная первая буква абзаца */
+  onDropCap?: () => void;
 }
 
 export const RibbonHelp = (p: TabActions) => (

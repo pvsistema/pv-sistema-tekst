@@ -104,10 +104,7 @@ const RibbonInsert = (p: TabActions) => {
         '</p></div><hr>',
     );
 
-  const insertLink = () => {
-    const url = window.prompt('Адрес ссылки', 'https://');
-    if (url) p.onCommand('createLink', url);
-  };
+  const insertLink = () => p.onLink?.();
 
   const insertChart = () => p.onChart?.();
 
@@ -115,7 +112,7 @@ const RibbonInsert = (p: TabActions) => {
 
   const insertWordArt = () => p.onWordArt?.();
 
-  const insertDropCap = () => p.onCommand('formatBlock', 'h1');
+  const insertDropCap = () => p.onDropCap?.();
 
   const insertHeader = () => p.onHeaderFooter?.('header');
   const insertFooter = () => p.onHeaderFooter?.('footer');

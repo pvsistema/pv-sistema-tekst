@@ -386,10 +386,17 @@
     content: "________________________________________________";
   }
 
+  /* ── буквица: крупная первая буква абзаца ── */
+  .pv-page .pv-dropcap {
+    font-family: inherit;
+    /* буква не должна разрываться между страницами при печати */
+    break-inside: avoid;
+  }
+
   /* ── формулы ── */
   .pv-page .pv-equation {
     @apply inline-block align-middle px-[2px] font-serif text-[1.05em] leading-none;
-    font-family: 'Cambria Math', Cambria, Georgia, serif;
+    font-family: "Cambria Math", Cambria, Georgia, serif;
   }
 
   .pv-page .pv-equation-block {
@@ -408,7 +415,7 @@
 
   /* пустое поле показывается пунктирным квадратиком */
   .pv-page .pv-eq-slot:empty::before {
-    content: '';
+    content: "";
     @apply inline-block h-[13px] w-[11px] rounded-[1px]
       border border-dashed border-[hsl(0_0%_62%)] align-middle;
   }
@@ -546,8 +553,8 @@
     @apply relative select-none;
   }
 
-  .pv-page .pv-object[data-object='wordart'],
-  .pv-page .pv-object[data-object='shape'] {
+  .pv-page .pv-object[data-object="wordart"],
+  .pv-page .pv-object[data-object="shape"] {
     @apply cursor-move;
   }
 

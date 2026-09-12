@@ -74,6 +74,8 @@ const Ribbon = (p: Props) => {
     onQuickParts: p.onQuickParts,
     onEquationNew: p.onEquationNew,
     onChart: p.onChart,
+    onLink: p.onLink,
+    onDropCap: p.onDropCap,
     zoom: p.zoom,
   };
 
