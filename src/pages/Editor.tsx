@@ -974,6 +974,31 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
+
+      /*
+       * Выравнивание абзаца и начертание: те же сочетания, что обещаны
+       * в подсказках кнопок. Без них Ctrl+L уводит фокус в браузер.
+       */
+      const ALIGN: Record<string, string> = {
+        l: 'justifyLeft',
+        e: 'justifyCenter',
+        r: 'justifyRight',
+        j: 'justifyFull',
+      };
+
+      /* Ctrl+Shift+L в Word — маркированный список */
+      if (e.shiftKey && k === 'l') {
+        e.preventDefault();
+        fmt.toggleBullets();
+        return;
+      }
+
+      if (!e.shiftKey && !e.altKey && ALIGN[k]) {
+        e.preventDefault();
+        exec(ALIGN[k]);
+        return;
+      }
+
       if (k === 's') {
         e.preventDefault();
         handleSave();
@@ -1018,6 +1043,7 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         fontSize={fontSize}
         onFontFamily={applyFontFamily}
         onFontSize={applyFontSize}
+        onUnderline={fmt.applyUnderline}
         onFind={() => setFindOpen(true)}
         onReplace={() => setFindOpen(true)}
         onPaste={handlePaste}
@@ -1224,6 +1250,7 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
           onAddTab={tabs.add}
           onRemoveTab={tabs.remove}
           onDragMargin={marginDrag.start}
+          onPageSetup={() => setPageSetupOpen(true)}
           dragging={marginDrag.dragging}
           preview={
             marginDrag.dragging === 'left' || marginDrag.dragging === 'right'
@@ -1250,6 +1277,7 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
             paddingTop={setup.marginTop * CM}
             paddingBottom={setup.marginBottom * CM}
             onDragMargin={marginDrag.start}
+            onPageSetup={() => setPageSetupOpen(true)}
             dragging={marginDrag.dragging}
             preview={marginDrag.preview}
           />

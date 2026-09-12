@@ -71,6 +71,25 @@ export const useFormat = ({ editorRef, exec, recount, notify }: Options) => {
     [recount, notify],
   );
 
+  /**
+   * Меняет только вид линии подчёркивания, остальное оформление
+   * выделенного текста остаётся прежним — как в Word.
+   */
+  const applyUnderline = useCallback(
+    (kind: CharFormat['underline']) => {
+      const now = readCharFormat(root());
+
+      if (applyCharFormat(root(), { ...now, underline: kind })) {
+        recount();
+        return;
+      }
+
+      notify('Выделите текст', 'Подчёркивание применяется к выделенному тексту');
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [recount, notify],
+  );
+
   const applyPara = useCallback(
     (f: ParaFormat) => {
       setParaOpen(false);
@@ -282,6 +301,7 @@ export const useFormat = ({ editorRef, exec, recount, notify }: Options) => {
     openPara,
     applyFont,
     applyPara,
+    applyUnderline,
     setLineSpacing,
     addSpacing,
     applyCase,

@@ -36,11 +36,28 @@ const FONT_VALUE: Record<string, string> = {
 
 const SIZES = ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '36', '48'];
 
+/** Виды линии подчёркивания — как в списке у кнопки Ч в Word */
+const UNDERLINE_KINDS: {
+  value: 'none' | 'single' | 'double' | 'dotted' | 'dashed' | 'wavy';
+  label: string;
+}[] = [
+  { value: 'single', label: 'Одинарное' },
+  { value: 'double', label: 'Двойное' },
+  { value: 'dotted', label: 'Пунктирное' },
+  { value: 'dashed', label: 'Штриховое' },
+  { value: 'wavy', label: 'Волнистое' },
+  { value: 'none', label: 'Без линии' },
+];
+
 export interface RibbonHomeProps {
   onCommand: (command: string, value?: string) => void;
   fontFamily: string;
   /* что включено там, где стоит курсор */
   format?: FormatState;
+  /** Выбор вида линии подчёркивания */
+  onUnderline?: (
+    kind: 'none' | 'single' | 'double' | 'dotted' | 'dashed' | 'wavy',
+  ) => void;
   fontSize: string;
   onFontFamily: (v: string) => void;
   onFontSize: (v: string) => void;
@@ -211,13 +228,51 @@ const RibbonHome = (p: RibbonHomeProps) => {
             active={p.format?.italic}
             onClick={() => p.onCommand('italic')}
           />
-          <SmallBtn
+          <SplitBtn
             letter="Ч"
             letterStyle="underline"
             title="Подчёркнутый (Ctrl+U)"
             active={p.format?.underline}
             onClick={() => p.onCommand('underline')}
-          />
+            width={170}
+          >
+            {(close) => (
+              <>
+                <p className="mb-1.5 text-[10px] text-slate-500">Вид линии</p>
+                <div className="flex flex-col">
+                  {UNDERLINE_KINDS.map((u) => (
+                    <button
+                      key={u.value}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        close();
+                        p.onUnderline?.(u.value);
+                      }}
+                      className="flex items-center justify-between gap-2 rounded-[2px] px-1.5 py-[3px] text-left text-[11px] hover:bg-[hsl(var(--win-hover))]"
+                    >
+                      <span>{u.label}</span>
+                      <span
+                        className="w-[42px] text-center leading-none"
+                        style={
+                          u.value === 'none'
+                            ? undefined
+                            : {
+                                textDecorationLine: 'underline',
+                                textDecorationStyle:
+                                  u.value === 'single' ? 'solid' : u.value,
+                                textUnderlineOffset: 2,
+                              }
+                        }
+                      >
+                        {u.value === 'none' ? '—' : 'Абв'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </SplitBtn>
           <SmallBtn
             letter="abc"
             letterStyle="strike"

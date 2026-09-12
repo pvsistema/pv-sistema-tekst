@@ -12,6 +12,8 @@ interface Props {
   /** Какую границу тянут и её значение — для подсказки */
   dragging?: 'left' | 'right' | 'top' | 'bottom' | null;
   preview?: number | null;
+  /** Двойной щелчок по линейке — окно параметров страницы, как в Word */
+  onPageSetup?: () => void;
 }
 
 /**
@@ -27,6 +29,7 @@ const DocRulerVertical = ({
   onDragMargin,
   dragging,
   preview,
+  onPageSetup,
 }: Props) => {
   const scale = zoom / 100;
   const height = pageHeight * scale;
@@ -42,7 +45,12 @@ const DocRulerVertical = ({
       className="relative w-[20px] shrink-0 border-r border-[hsl(var(--win-ribbon-border))] bg-[hsl(0_0%_96%)]"
       style={{ paddingTop: offsetTop * scale }}
     >
-      <div className="relative w-[15px] mx-auto" style={{ height }}>
+      <div
+        className="relative w-[15px] mx-auto cursor-pointer"
+        style={{ height }}
+        title="Двойной щелчок — параметры страницы"
+        onDoubleClick={onPageSetup}
+      >
         <div className="absolute inset-0 rounded-[1px] bg-[hsl(0_0%_78%)]" />
 
         {/* белая часть — рабочая область между полями */}

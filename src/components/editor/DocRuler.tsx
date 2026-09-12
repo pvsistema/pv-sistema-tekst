@@ -20,6 +20,8 @@ interface Props {
   /** Какую границу тянут и её значение — для подсказки */
   dragging?: 'left' | 'right' | 'top' | 'bottom' | null;
   preview?: number | null;
+  /** Двойной щелчок по линейке — окно параметров страницы, как в Word */
+  onPageSetup?: () => void;
 }
 
 const SIGN: Record<TabAlign, string> = {
@@ -44,6 +46,7 @@ const DocRuler = ({
   onDragMargin,
   dragging,
   preview,
+  onPageSetup,
 }: Props) => {
   const scale = zoom / 100;
   const width = pageWidth * scale;
@@ -85,8 +88,10 @@ const DocRuler = ({
       <div
         className="relative h-[15px] cursor-pointer"
         style={{ width }}
+        title="Двойной щелчок — параметры страницы"
         onMouseDown={(e) => e.preventDefault()}
         onClick={handleClick}
+        onDoubleClick={onPageSetup}
       >
         <div className="absolute inset-0 rounded-[1px] bg-[hsl(0_0%_78%)]" />
         <div

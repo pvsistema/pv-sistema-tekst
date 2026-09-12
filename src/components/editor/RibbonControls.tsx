@@ -368,14 +368,19 @@ export const SplitBtn = ({
   active,
   children,
   width = 190,
+  letter,
+  letterStyle,
 }: {
-  icon: string;
+  icon?: string;
   title: string;
   onClick: () => void;
   active?: boolean;
   /** Содержимое выпадающей части */
   children: (close: () => void) => React.ReactNode;
   width?: number;
+  /** Буква вместо значка — как Ч в русском Word */
+  letter?: string;
+  letterStyle?: 'bold' | 'italic' | 'underline' | 'strike';
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -396,7 +401,25 @@ export const SplitBtn = ({
         onClick={onClick}
         className="win-btn h-[22px] rounded-r-none px-1"
       >
-        <Icon name={icon} size={15} />
+        {letter ? (
+          <span
+            className={`w-[15px] text-center font-serif text-[14px] leading-none ${
+              letterStyle === 'bold'
+                ? 'font-bold'
+                : letterStyle === 'italic'
+                  ? 'italic'
+                  : letterStyle === 'underline'
+                    ? 'underline underline-offset-2'
+                    : letterStyle === 'strike'
+                      ? 'line-through'
+                      : ''
+            }`}
+          >
+            {letter}
+          </span>
+        ) : (
+          icon && <Icon name={icon} size={15} />
+        )}
       </button>
       <button
         type="button"
