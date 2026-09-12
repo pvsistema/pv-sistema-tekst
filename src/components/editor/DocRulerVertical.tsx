@@ -7,6 +7,11 @@ interface Props {
   paddingBottom: number;
   /** Отступ сверху до начала листа — линейка встаёт вровень с ним */
   offsetTop?: number;
+  /** Захват границы поля мышью */
+  onDragMargin?: (edge: 'top' | 'bottom', event: React.MouseEvent) => void;
+  /** Какую границу тянут и её значение — для подсказки */
+  dragging?: 'left' | 'right' | 'top' | 'bottom' | null;
+  preview?: number | null;
 }
 
 /**
@@ -19,6 +24,9 @@ const DocRulerVertical = ({
   paddingTop,
   paddingBottom,
   offsetTop = 16,
+  onDragMargin,
+  dragging,
+  preview,
 }: Props) => {
   const scale = zoom / 100;
   const height = pageHeight * scale;
@@ -31,7 +39,7 @@ const DocRulerVertical = ({
 
   return (
     <div
-      className="w-[20px] shrink-0 border-r border-[hsl(var(--win-ribbon-border))] bg-[hsl(0_0%_96%)]"
+      className="relative w-[20px] shrink-0 border-r border-[hsl(var(--win-ribbon-border))] bg-[hsl(0_0%_96%)]"
       style={{ paddingTop: offsetTop * scale }}
     >
       <div className="relative w-[15px] mx-auto" style={{ height }}>
@@ -42,6 +50,43 @@ const DocRulerVertical = ({
           className="absolute inset-x-0 rounded-[1px] border border-[hsl(0_0%_66%)] bg-white"
           style={{ top: padTop, bottom: padBottom }}
         />
+
+        {/* границы полей: тянутся мышью, как в Word */}
+        {onDragMargin && (
+          <>
+            <div
+              role="presentation"
+              title="Верхнее поле: потяните, чтобы изменить"
+              onMouseDown={(e) => onDragMargin('top', e)}
+              className="absolute inset-x-0 z-10 h-[7px] cursor-row-resize hover:bg-[hsl(210_60%_60%/0.35)]"
+              style={{ top: padTop - 3 }}
+            />
+            <div
+              role="presentation"
+              title="Нижнее поле: потяните, чтобы изменить"
+              onMouseDown={(e) => onDragMargin('bottom', e)}
+              className="absolute inset-x-0 z-10 h-[7px] cursor-row-resize hover:bg-[hsl(210_60%_60%/0.35)]"
+              style={{ top: height - padBottom - 3 }}
+            />
+          </>
+        )}
+
+        {/* во время перетаскивания показываем размер в сантиметрах */}
+        {preview !== null &&
+          preview !== undefined &&
+          (dragging === 'top' || dragging === 'bottom') && (
+            <span
+              className="pointer-events-none absolute left-[18px] z-20 whitespace-nowrap rounded-[2px] border border-[hsl(0_0%_72%)] bg-[hsl(60_100%_96%)] px-1 text-[9px] leading-[13px] text-[hsl(0_0%_20%)] shadow-sm"
+              style={{
+                top:
+                  dragging === 'bottom'
+                    ? Math.max(0, height - padBottom - 7)
+                    : Math.max(0, padTop - 7),
+              }}
+            >
+              {preview.toFixed(2).replace('.', ',')} см
+            </span>
+          )}
 
         {Array.from({ length: Math.max(0, marks) }, (_, i) => (
           <span

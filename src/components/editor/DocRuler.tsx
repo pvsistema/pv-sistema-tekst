@@ -15,6 +15,11 @@ interface Props {
   onTabAlign?: () => void;
   onAddTab?: (positionCm: number) => void;
   onRemoveTab?: (positionCm: number) => void;
+  /** Захват границы поля мышью */
+  onDragMargin?: (edge: 'left' | 'right', event: React.MouseEvent) => void;
+  /** Какую границу тянут и её значение — для подсказки */
+  dragging?: 'left' | 'right' | 'top' | 'bottom' | null;
+  preview?: number | null;
 }
 
 const SIGN: Record<TabAlign, string> = {
@@ -36,6 +41,9 @@ const DocRuler = ({
   onTabAlign,
   onAddTab,
   onRemoveTab,
+  onDragMargin,
+  dragging,
+  preview,
 }: Props) => {
   const scale = zoom / 100;
   const width = pageWidth * scale;
@@ -51,6 +59,9 @@ const DocRuler = ({
   /* щелчок по линейке ставит позицию там, куда попали */
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onAddTab) return;
+
+    /* тянули поле — это не установка позиции табуляции */
+    if (dragging || preview !== null) return;
 
     const box = e.currentTarget.getBoundingClientRect();
     const position = (e.clientX - box.left - pad) / cm;
@@ -82,6 +93,41 @@ const DocRuler = ({
           className="absolute inset-y-0 rounded-[1px] border border-[hsl(0_0%_66%)] bg-white"
           style={{ left: pad, right: padRight }}
         />
+
+        {/* границы полей: тянутся мышью, как в Word */}
+        {onDragMargin && (
+          <>
+            <div
+              role="presentation"
+              title="Левое поле: потяните, чтобы изменить"
+              onMouseDown={(e) => onDragMargin('left', e)}
+              className="absolute inset-y-0 z-10 w-[7px] cursor-col-resize hover:bg-[hsl(210_60%_60%/0.35)]"
+              style={{ left: pad - 3 }}
+            />
+            <div
+              role="presentation"
+              title="Правое поле: потяните, чтобы изменить"
+              onMouseDown={(e) => onDragMargin('right', e)}
+              className="absolute inset-y-0 z-10 w-[7px] cursor-col-resize hover:bg-[hsl(210_60%_60%/0.35)]"
+              style={{ left: width - padRight - 3 }}
+            />
+          </>
+        )}
+
+        {/* во время перетаскивания показываем размер в сантиметрах */}
+        {preview !== null && preview !== undefined && (
+          <span
+            className="pointer-events-none absolute top-[17px] z-20 whitespace-nowrap rounded-[2px] border border-[hsl(0_0%_72%)] bg-[hsl(60_100%_96%)] px-1 text-[9px] leading-[13px] text-[hsl(0_0%_20%)] shadow-sm"
+            style={{
+              left:
+                dragging === 'right'
+                  ? Math.max(0, width - padRight - 20)
+                  : Math.max(0, pad - 20),
+            }}
+          >
+            {preview.toFixed(2).replace('.', ',')} см
+          </span>
+        )}
 
         {Array.from({ length: marks }, (_, i) => (
           <span

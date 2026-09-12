@@ -5,6 +5,7 @@ import WindowTitleBar from '@/components/editor/WindowTitleBar';
 import Ribbon, { RibbonTab } from '@/components/editor/Ribbon';
 import DocRuler from '@/components/editor/DocRuler';
 import DocRulerVertical from '@/components/editor/DocRulerVertical';
+import { useMarginDrag } from '@/hooks/use-margin-drag';
 import DocumentCanvas, {
   CM,
   PAGE_HEIGHT,
@@ -202,6 +203,43 @@ const Editor = () => {
     (patch: Partial<PageSetup>) => setSetup((s) => ({ ...s, ...patch })),
     [],
   );
+
+  /* перетаскивание полей мышью по линейкам */
+  const marginDrag = useMarginDrag({
+    pixelsPerCm: CM * (zoom / 100),
+    paperSize: (edge) =>
+      edge === 'left' || edge === 'right'
+        ? (setup.landscape ? setup.paperHeight : setup.paperWidth) ?? 21
+        : (setup.landscape ? setup.paperWidth : setup.paperHeight) ?? 29.7,
+    current: (edge) =>
+      edge === 'left'
+        ? setup.marginLeft
+        : edge === 'right'
+          ? setup.marginRight
+          : edge === 'top'
+            ? setup.marginTop
+            : setup.marginBottom,
+    opposite: (edge) =>
+      edge === 'left'
+        ? setup.marginRight
+        : edge === 'right'
+          ? setup.marginLeft
+          : edge === 'top'
+            ? setup.marginBottom
+            : setup.marginTop,
+    onChange: (edge, value) => {
+      const key =
+        edge === 'left'
+          ? 'marginLeft'
+          : edge === 'right'
+            ? 'marginRight'
+            : edge === 'top'
+              ? 'marginTop'
+              : 'marginBottom';
+
+      patchSetup({ [key]: value, ...(edge === 'top' ? { margin: value } : {}) });
+    },
+  });
 
   /* высота листа и полей — из параметров страницы документа */
   /* число с точностью до сотых — для размеров в сантиметрах */
@@ -1185,6 +1223,13 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
           onTabAlign={tabs.cycleAlign}
           onAddTab={tabs.add}
           onRemoveTab={tabs.remove}
+          onDragMargin={marginDrag.start}
+          dragging={marginDrag.dragging}
+          preview={
+            marginDrag.dragging === 'left' || marginDrag.dragging === 'right'
+              ? marginDrag.preview
+              : null
+          }
         />
       )}
 
@@ -1204,6 +1249,9 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
             pageHeight={pageHeight}
             paddingTop={setup.marginTop * CM}
             paddingBottom={setup.marginBottom * CM}
+            onDragMargin={marginDrag.start}
+            dragging={marginDrag.dragging}
+            preview={marginDrag.preview}
           />
         )}
 
