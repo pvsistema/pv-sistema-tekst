@@ -247,6 +247,7 @@ export const buildPrintHtml = (o: PrintDocOptions): string => {
 ${collectPageCss()}
 ${o.pageCss}
 body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.15;margin:0;zoom:${s.scale / 100}}
+.pv-page-spacer{display:none !important}
 ${o.bodyCss}
 /*
  * Разрыв страницы: на бумаге его роль исполняет сам переход на новый

@@ -386,6 +386,20 @@
     content: "________________________________________________";
   }
 
+  /* ── распорка переноса на новую страницу ── */
+  .pv-page .pv-page-spacer {
+    display: block;
+    /* служебный блок: не выделяется, не печатается, не мешает курсору */
+    user-select: none;
+    pointer-events: none;
+  }
+
+  @media print {
+    .pv-page .pv-page-spacer {
+      display: none;
+    }
+  }
+
   /* ── буквица: крупная первая буква абзаца ── */
   .pv-page .pv-dropcap {
     font-family: inherit;

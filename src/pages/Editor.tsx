@@ -7,6 +7,7 @@ import DocRuler from '@/components/editor/DocRuler';
 import DocRulerVertical from '@/components/editor/DocRulerVertical';
 import { useMarginDrag } from '@/hooks/use-margin-drag';
 import { countObjects, goToPage, selectSameFormat } from '@/lib/select-tools';
+import { paginate, stripSpacersHtml } from '@/lib/paginate';
 import { useClipboardPane } from '@/hooks/use-clipboard-pane';
 import ClipboardPane from '@/components/editor/ClipboardPane';
 import DocumentCanvas, {
@@ -274,56 +275,38 @@ const Editor = () => {
     setup.landscape,
   ).height;
 
-  const contentHeight =
-    pageHeight - (setup.marginTop + setup.marginBottom) * CM;
+  /* поля листа в пикселях — нужны пагинатору, чтобы текст не залезал в них */
+  const padTop = setup.marginTop * CM;
+  const padBottom = setup.marginBottom * CM;
+
+  const contentHeight = pageHeight - padTop - padBottom;
 
   const recount = useCallback(() => {
     const el = editorRef.current;
     if (!el) return;
+
     const text = el.innerText.replace(/\u00a0/g, ' ');
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     const chars = text.replace(/\n/g, '').length;
-    /* высоту берём по последнему абзацу: сам лист всегда растянут на страницу */
-    const last = el.lastElementChild as HTMLElement | null;
-    const filled = last
-      ? last.offsetTop - el.offsetTop + last.offsetHeight
-      : el.scrollHeight;
 
     /*
-     * Принудительные разрывы: текст после них уходит на новый лист,
-     * поэтому считаем страницы по отрезкам между разрывами.
+     * Раскладываем содержимое по листам: блок, который не помещается
+     * на текущей странице, переносится на следующую целиком. Пагинатор
+     * сам возвращает итоговое число страниц.
      */
-    const marks = [
-      ...el.querySelectorAll<HTMLElement>(
-        '.pv-break[data-break="page"],.pv-break[data-break^="section"]',
-      ),
-    ];
-
-    let pages: number;
-
-    if (marks.length) {
-      let used = 0;
-      let start = 0;
-
-      for (const mark of marks) {
-        const end = mark.offsetTop - el.offsetTop;
-        used += Math.max(1, Math.ceil((end - start) / contentHeight));
-        start = end;
-      }
-
-      /* последний отрезок — от последнего разрыва до конца текста */
-      used += Math.max(1, Math.ceil((filled - start) / contentHeight));
-      pages = Math.max(1, used);
-    } else {
-      pages = Math.max(1, Math.ceil((filled - 2) / contentHeight));
-    }
+    const pages = paginate(el, {
+      pageHeight,
+      padTop,
+      padBottom,
+      contentHeight,
+    });
 
     setStats({ words, chars, pages });
-  }, [contentHeight]);
+  }, [contentHeight, pageHeight, padTop, padBottom]);
 
   useEffect(() => {
     if (editorRef.current && active) {
-      editorRef.current.innerHTML = active.html;
+      editorRef.current.innerHTML = stripSpacersHtml(active.html);
       setFurniture(
         (active.furniture as PageFurniture | undefined) ?? DEFAULT_FURNITURE,
       );
@@ -335,7 +318,7 @@ const Editor = () => {
   const persist = useCallback(() => {
     if (!editorRef.current || !active) return;
     updateDocument(active.id, {
-      html: editorRef.current.innerHTML,
+      html: stripSpacersHtml(editorRef.current.innerHTML),
       furniture,
     });
     setSavedAt(Date.now());
@@ -343,7 +326,10 @@ const Editor = () => {
 
   /* защита от потери несохранённых правок */
   const guardApi = useUnsavedGuard({
-    getHtml: useCallback(() => editorRef.current?.innerHTML ?? '', []),
+    getHtml: useCallback(
+      () => stripSpacersHtml(editorRef.current?.innerHTML ?? ''),
+      [],
+    ),
     docId: active?.id ?? null,
   });
 
@@ -361,7 +347,9 @@ const Editor = () => {
     if (!options.autoSave) return;
     const id = window.setInterval(() => {
       if (editorRef.current && active) {
-        updateDocument(active.id, { html: editorRef.current.innerHTML });
+        updateDocument(active.id, {
+          html: stripSpacersHtml(editorRef.current.innerHTML),
+        });
         setSavedAt(Date.now());
         markSaved();
       }
@@ -704,7 +692,7 @@ const Editor = () => {
   };
 
   const buildFullHtml = () => {
-    const body = editorRef.current?.innerHTML ?? '';
+    const body = stripSpacersHtml(editorRef.current?.innerHTML ?? '');
     const title = active?.title ?? 'Документ';
     const f = furniture;
 
@@ -783,7 +771,7 @@ const Editor = () => {
 
   const handleExportHtml = () => {
     /* в файл сохраняем документ целиком, без выбора страниц и копий */
-    const body = editorRef.current?.innerHTML ?? '';
+    const body = stripSpacersHtml(editorRef.current?.innerHTML ?? '');
     const title = active?.title ?? 'Документ';
 
     const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title><style>
@@ -796,7 +784,9 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
   };
 
   const handleExportDoc = () => {
-    const body = editorRef.current?.innerHTML ?? active?.html ?? '';
+    const body = stripSpacersHtml(
+      editorRef.current?.innerHTML ?? active?.html ?? '',
+    );
     const title = active?.title ?? 'document';
 
     const bytes = htmlToDocx(body, title, {
@@ -1005,6 +995,14 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
+
+      /* Ctrl+Enter в Word — разрыв страницы */
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        breaks.insert('page');
+        return;
+      }
+
       const k = e.key.toLowerCase();
 
       /*
@@ -1468,7 +1466,9 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         setup={setup}
         onSetup={patchSetup}
         pages={stats.pages}
-        getHtml={() => editorRef.current?.innerHTML ?? active?.html ?? ''}
+        getHtml={() =>
+          stripSpacersHtml(editorRef.current?.innerHTML ?? active?.html ?? '')
+        }
         onOptions={() => {
           setFileMenu(false);
           setOptionsOpen(true);

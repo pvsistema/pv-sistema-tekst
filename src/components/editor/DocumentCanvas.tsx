@@ -3,6 +3,7 @@ import type { DocTheme } from './RibbonDesign';
 import type { PageSetup } from './RibbonLayout';
 import type { PageFurniture } from '@/lib/page-numbers';
 import { pagePixels } from '@/lib/page-setup';
+import { PAGE_GAP, canvasHeight } from '@/lib/paginate';
 import type { PageBorderSetup } from '@/lib/borders';
 import PageFurnitureLayer from './PageFurnitureLayer';
 
@@ -80,6 +81,9 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
     const pad = padTop;
     const contentHeight = height - padTop - padBottom;
 
+    /* общая высота стопки листов вместе с зазорами между ними */
+    const sheetsHeight = canvasHeight(Math.max(1, pages), height);
+
     /* веб-документ, черновик и структура — единая лента без листа */
     if (flat)
       return (
@@ -147,16 +151,24 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
             className="origin-top"
             style={{ transform: `scale(${scale})`, width }}
           >
-            <div
-              className="relative shadow-[0_1px_5px_rgba(0,0,0,0.35)]"
-              style={{
-                background: pageColor,
-                backgroundImage: showGrid
-                  ? 'linear-gradient(hsl(210 40% 88%) 1px, transparent 1px), linear-gradient(90deg, hsl(210 40% 88%) 1px, transparent 1px)'
-                  : undefined,
-                backgroundSize: showGrid ? '18.9px 18.9px' : undefined,
-              }}
-            >
+            <div className="relative" style={{ height: sheetsHeight }}>
+              {/* каждый лист — отдельный белый прямоугольник с тенью,
+                  между листами серый зазор, как в Word */}
+              {Array.from({ length: Math.max(1, pages) }, (_, i) => (
+                <div
+                  key={`sheet-${i}`}
+                  className="absolute left-0 right-0 shadow-[0_1px_5px_rgba(0,0,0,0.35)]"
+                  style={{
+                    top: i * (height + PAGE_GAP),
+                    height,
+                    background: pageColor,
+                    backgroundImage: showGrid
+                      ? 'linear-gradient(hsl(210 40% 88%) 1px, transparent 1px), linear-gradient(90deg, hsl(210 40% 88%) 1px, transparent 1px)'
+                      : undefined,
+                    backgroundSize: showGrid ? '18.9px 18.9px' : undefined,
+                  }}
+                />
+              ))}
               {watermark && (
                 <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden">
                   <span
@@ -217,24 +229,16 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
                 />
               )}
 
-              {Array.from({ length: Math.max(0, pages - 1) }, (_, i) => (
-                <div
-                  key={i}
-                  className="pointer-events-none absolute left-0 right-0 z-10 border-t border-dashed border-[hsl(0_0%_72%)]"
-                  style={{ top: (i + 1) * contentHeight + pad }}
-                />
-              ))}
-
               <div
                 ref={ref}
                 contentEditable
                 suppressContentEditableWarning
                 onInput={onInput}
                 spellCheck
-                className="pv-page relative z-10 outline-none"
+                className="pv-page absolute inset-x-0 top-0 z-10 outline-none"
                 style={
                   {
-                    minHeight: height,
+                    minHeight: sheetsHeight,
                     paddingTop: padTop,
                     paddingBottom: padBottom,
                     paddingLeft: padLeft + setup.indentLeft * CM,

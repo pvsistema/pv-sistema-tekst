@@ -126,36 +126,21 @@ export const layoutBreaks = (
 ): void => {
   if (!root || contentHeight <= 0) return;
 
-  const breaks = listBreaks(root).filter(
-    (b) =>
-      b.dataset.break === 'page' ||
-      b.dataset.break === 'section-next' ||
-      b.dataset.break === 'section-even' ||
-      b.dataset.break === 'section-odd',
-  );
-
-  /* сначала обнуляем, чтобы измерить настоящее положение */
-  breaks.forEach((b) => {
-    b.style.height = '0px';
-  });
-
-  breaks.forEach((b) => {
-    const top = b.offsetTop;
-    const used = top % contentHeight;
-    let gap = used > 1 ? contentHeight - used : 0;
-
-    /* чётные и нечётные страницы могут потребовать пропустить лист */
-    const kind = b.dataset.break;
-    if (kind === 'section-even' || kind === 'section-odd') {
-      const pageAfter = Math.floor((top + gap) / contentHeight) + 1;
-      const wantEven = kind === 'section-even';
-
-      if (pageAfter % 2 === 0 !== wantEven) gap += contentHeight;
-    }
-
-    b.style.height = `${Math.max(0, gap)}px`;
-  });
-};
+  /*
+   * Раньше разрыв растягивался по высоте до конца листа. Теперь перенос
+   * на новую страницу делает пагинатор, поэтому сам разрыв высоты не
+   * занимает — иначе на стыке появлялся бы лишний пустой лист.
+   */
+  listBreaks(root)
+    .filter(
+      (b) =>
+        b.dataset.break === 'page' ||
+        b.dataset.break?.startsWith('section'),
+    )
+    .forEach((b) => {
+      b.style.height = '0px';
+    });
+}
 
 /** Номер раздела, в котором стоит курсор */
 export const currentSection = (root: HTMLElement | null): number => {

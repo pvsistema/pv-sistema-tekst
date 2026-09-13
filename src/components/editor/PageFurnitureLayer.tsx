@@ -1,4 +1,5 @@
 import type { PageFurniture } from '@/lib/page-numbers';
+import { PAGE_GAP } from '@/lib/paginate';
 import { expandFields, formatNumber } from '@/lib/page-numbers';
 
 interface Props {
@@ -32,7 +33,6 @@ const PageFurnitureLayer = ({
   padding,
   padLeft,
   padRight,
-  contentHeight,
   docTitle,
   onEdit,
 }: Props) => {
@@ -56,7 +56,8 @@ const PageFurnitureLayer = ({
         const showNumber =
           f.numberPosition !== 'none' && (!first || f.numberOnFirst);
 
-        const top = i * contentHeight;
+        /* листы идут стопкой с зазором — колонтитул привязан к своему листу */
+        const top = i * (pageHeight + PAGE_GAP);
 
         const header = skip
           ? ''
