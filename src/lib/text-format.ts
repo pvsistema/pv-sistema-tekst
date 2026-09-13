@@ -30,6 +30,15 @@ export interface ParaFormat {
   /** Межстрочный интервал: множитель либо точное значение */
   lineRule: 'single' | '1.15' | '1.5' | 'double' | 'exact' | 'multiple';
   lineValue: number;
+  /* ── положение на странице (вкладка «Положение на странице» в Word) ── */
+  /** Запрет висячих строк: не оставлять одну строку абзаца на странице */
+  widowControl: boolean;
+  /** Не отрывать от следующего: заголовок уходит вместе со своим текстом */
+  keepWithNext: boolean;
+  /** Не разрывать абзац: он целиком уходит на следующую страницу */
+  keepLines: boolean;
+  /** С новой страницы: перед абзацем всегда разрыв */
+  pageBreakBefore: boolean;
 }
 
 export const DEFAULT_CHAR: CharFormat = {
@@ -55,6 +64,11 @@ export const DEFAULT_PARA: ParaFormat = {
   spaceAfter: 8,
   lineRule: '1.15',
   lineValue: 1.15,
+  /* запрет висячих строк включён по умолчанию — как в Word */
+  widowControl: true,
+  keepWithNext: false,
+  keepLines: false,
+  pageBreakBefore: false,
 };
 
 /** В одном сантиметре примерно 37.8 экранных точек */
@@ -199,6 +213,11 @@ export const readParaFormat = (root: HTMLElement | null): ParaFormat => {
     spaceAfter: round(parseFloat(cs.marginBottom || '0') / PT_TO_PX, 1),
     lineRule: rule,
     lineValue: round(ratio, 2),
+    /* положение на странице хранится признаками прямо на абзаце */
+    widowControl: el.dataset.widow !== '0',
+    keepWithNext: el.dataset.keepNext === '1',
+    keepLines: el.dataset.keepLines === '1',
+    pageBreakBefore: el.dataset.breakBefore === '1',
   };
 };
 
@@ -235,6 +254,21 @@ export const applyParaFormat = (
     el.style.marginTop = `${f.spaceBefore * PT_TO_PX}px`;
     el.style.marginBottom = `${f.spaceAfter * PT_TO_PX}px`;
     el.style.lineHeight = lineHeightOf(f);
+
+    /*
+     * Положение на странице: пагинатор читает эти признаки и решает,
+     * переносить ли абзац целиком на следующий лист.
+     */
+    const flag = (name: string, on: boolean, value = '1') => {
+      if (on) el.dataset[name] = value;
+      else delete el.dataset[name];
+    };
+
+    /* висячие строки запрещены по умолчанию, поэтому храним выключение */
+    flag('widow', !f.widowControl, '0');
+    flag('keepNext', f.keepWithNext);
+    flag('keepLines', f.keepLines);
+    flag('breakBefore', f.pageBreakBefore);
   });
 
   return list.length;

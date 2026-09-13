@@ -3,7 +3,7 @@ import { toast } from '@/hooks/use-toast';
 import { useDocuments } from '@/hooks/use-documents';
 import WindowTitleBar from '@/components/editor/WindowTitleBar';
 import Ribbon, { RibbonTab } from '@/components/editor/Ribbon';
-import DocRuler from '@/components/editor/DocRuler';
+import DocRuler, { TabAlignCorner } from '@/components/editor/DocRuler';
 import DocRulerVertical from '@/components/editor/DocRulerVertical';
 import { useMarginDrag } from '@/hooks/use-margin-drag';
 import { countObjects, goToPage, selectSameFormat } from '@/lib/select-tools';
@@ -1315,33 +1315,6 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
         onProperties={() => setFileMenu(true)}
       />
 
-      {showRuler && viewMode === 'print' && (
-        <DocRuler
-          zoom={zoom}
-          pageWidth={
-            pagePixels(
-              { width: setup.paperWidth, height: setup.paperHeight },
-              setup.landscape,
-            ).width
-          }
-          padding={(setup.marginLeft + setup.gutter) * CM}
-          paddingRight={setup.marginRight * CM}
-          tabStops={tabs.stops}
-          tabAlign={tabs.align}
-          onTabAlign={tabs.cycleAlign}
-          onAddTab={tabs.add}
-          onRemoveTab={tabs.remove}
-          onDragMargin={marginDrag.start}
-          onPageSetup={() => setPageSetupOpen(true)}
-          dragging={marginDrag.dragging}
-          preview={
-            marginDrag.dragging === 'left' || marginDrag.dragging === 'right'
-              ? marginDrag.preview
-              : null
-          }
-        />
-      )}
-
       <div className="flex min-h-0 flex-1">
         <ClipboardPane
           open={clipboard.open}
@@ -1361,22 +1334,54 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6p
           />
         )}
 
-        {showRuler && viewMode === 'print' && (
-          <DocRulerVertical
-            zoom={zoom}
-            pageHeight={pageHeight}
-            paddingTop={setup.marginTop * CM}
-            paddingBottom={setup.marginBottom * CM}
-            onDragMargin={marginDrag.start}
-            onPageSetup={() => setPageSetupOpen(true)}
-            dragging={marginDrag.dragging}
-            preview={marginDrag.preview}
-          />
-        )}
-
         <DocumentCanvas
           ref={editorRef}
           zoom={zoom}
+          showRuler={showRuler}
+          ruler={
+            <DocRuler
+              zoom={zoom}
+              pageWidth={
+                pagePixels(
+                  { width: setup.paperWidth, height: setup.paperHeight },
+                  setup.landscape,
+                ).width
+              }
+              padding={(setup.marginLeft + setup.gutter) * CM}
+              paddingRight={setup.marginRight * CM}
+              tabStops={tabs.stops}
+              onAddTab={tabs.add}
+              onRemoveTab={tabs.remove}
+              onDragMargin={marginDrag.start}
+              onPageSetup={() => setPageSetupOpen(true)}
+              dragging={marginDrag.dragging}
+              preview={
+                marginDrag.dragging === 'left' ||
+                marginDrag.dragging === 'right'
+                  ? marginDrag.preview
+                  : null
+              }
+            />
+          }
+          rulerVertical={
+            <DocRulerVertical
+              zoom={zoom}
+              pageHeight={pageHeight}
+              paddingTop={setup.marginTop * CM}
+              paddingBottom={setup.marginBottom * CM}
+              pages={stats.pages}
+              onDragMargin={marginDrag.start}
+              onPageSetup={() => setPageSetupOpen(true)}
+              dragging={marginDrag.dragging}
+              preview={marginDrag.preview}
+              corner={
+                <TabAlignCorner
+                  tabAlign={tabs.align}
+                  onTabAlign={tabs.cycleAlign}
+                />
+              }
+            />
+          }
           pages={stats.pages}
           onInput={handleInput}
           onScroll={onCanvasScroll}

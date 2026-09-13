@@ -28,6 +28,10 @@ interface Props {
   onEditFurniture?: (part: 'header' | 'footer') => void;
   /** Настраиваемое обрамление страницы */
   pageBorderSetup?: PageBorderSetup;
+  /** Линейки живут внутри области прокрутки — так они точно совпадают с листом */
+  showRuler?: boolean;
+  ruler?: React.ReactNode;
+  rulerVertical?: React.ReactNode;
 }
 
 /** Лист A4 при 96 dpi */
@@ -58,6 +62,9 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
       docTitle = '',
       onEditFurniture,
       pageBorderSetup,
+      showRuler = false,
+      ruler,
+      rulerVertical,
     },
     ref,
   ) => {
@@ -139,16 +146,25 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
         } ${splitView ? 'border-b-4 border-[hsl(0_0%_65%)]' : ''}`}
         style={{ background: 'hsl(var(--win-canvas))' }}
       >
-        <div
-          className="mx-auto"
-          style={{
-            width: width * scale,
-            paddingTop: 16 * scale,
-            paddingBottom: 24 * scale,
-          }}
-        >
+        <div className="flex min-w-full">
+          {showRuler && rulerVertical}
+
           <div
-            className="origin-top"
+            className="mx-auto"
+            style={{
+              width: width * scale,
+              paddingBottom: 24 * scale,
+            }}
+          >
+            {/* линейка той же ширины, что лист, и в том же потоке —
+                поэтому деления всегда стоят ровно над полями */}
+            {showRuler && ruler}
+
+            <div style={{ paddingTop: 16 * scale }}>
+          {/* масштабируем от левого верхнего угла: иначе лист уезжает
+              вбок относительно линейки при масштабе меньше 100% */}
+          <div
+            className="origin-top-left"
             style={{ transform: `scale(${scale})`, width }}
           >
             <div className="relative" style={{ height: sheetsHeight }}>
@@ -268,6 +284,8 @@ const DocumentCanvas = forwardRef<HTMLDivElement, Props>(
                   } as React.CSSProperties
                 }
               />
+            </div>
+          </div>
             </div>
           </div>
         </div>

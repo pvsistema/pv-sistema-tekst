@@ -26,6 +26,21 @@ export const stripSpacersHtml = (html: string): string =>
     '',
   );
 
+/** Сколько строк занимает абзац — нужно для запрета висячих строк */
+const lineCount = (el: HTMLElement): number => {
+  const cs = window.getComputedStyle(el);
+  const line = parseFloat(cs.lineHeight);
+
+  if (!line || Number.isNaN(line)) return 1;
+
+  const inner =
+    el.offsetHeight -
+    parseFloat(cs.paddingTop || '0') -
+    parseFloat(cs.paddingBottom || '0');
+
+  return Math.max(1, Math.round(inner / line));
+};
+
 const makeSpacer = (height: number): HTMLElement => {
   const s = document.createElement('div');
 
@@ -58,11 +73,14 @@ export const paginate = (
   /* шаг между началами соседних листов на экране */
   const step = pageHeight + PAGE_GAP;
 
-  const blocks = [...root.children] as HTMLElement[];
+  const blocks = ([...root.children] as HTMLElement[]).filter(
+    (b) => !b.classList.contains(SPACER),
+  );
+
   let page = 0;
 
-  for (const block of blocks) {
-    if (block.classList.contains(SPACER)) continue;
+  for (let i = 0; i < blocks.length; i += 1) {
+    const block = blocks[i];
 
     /* нижняя граница полезной части текущего листа */
     const limit = page * step + padTop + contentHeight;
@@ -71,17 +89,61 @@ export const paginate = (
     const bottom = top + block.offsetHeight;
 
     /* явный разрыв страницы: всё, что после него, идёт на новый лист */
-    const forced =
+    const isBreak =
       block.classList.contains('pv-break') &&
       (block.dataset.break === 'page' ||
         block.dataset.break?.startsWith('section'));
 
-    if (!forced && bottom <= limit + 1) continue;
+    /* «с новой страницы» в настройках абзаца */
+    const breakBefore = block.dataset.breakBefore === '1' && top > padTop;
 
-    /* блок выше целого листа — оставляем, он займёт страницы подряд */
+    let forced = isBreak || breakBefore;
+
+    if (!forced && bottom <= limit + 1) {
+      /*
+       * Абзац помещается, но может утащить за собой следующий:
+       * «не отрывать от следующего» держит заголовок вместе с текстом.
+       */
+      if (block.dataset.keepNext === '1') {
+        const next = blocks[i + 1];
+
+        if (next) {
+          const nextBottom =
+            next.offsetTop - root.offsetTop + next.offsetHeight;
+
+          /* пара не помещается целиком — переносим её вместе */
+          if (nextBottom > limit + 1 && next.offsetHeight <= contentHeight)
+            forced = true;
+        }
+      }
+
+      if (!forced) continue;
+    }
+
+    /* высокий абзац занимает несколько листов подряд */
     if (!forced && block.offsetHeight > contentHeight) {
-      page += Math.ceil((bottom - (page * step + padTop)) / contentHeight) - 1;
-      continue;
+      /* «не разрывать абзац» уводит его целиком на новый лист */
+      if (block.dataset.keepLines !== '1') {
+        page += Math.ceil((bottom - (page * step + padTop)) / contentHeight) - 1;
+        continue;
+      }
+    }
+
+    /*
+     * Запрет висячих строк: абзац не должен оставлять на листе одну
+     * строку. Если на текущей странице помещается меньше двух строк,
+     * переносим его целиком.
+     */
+    if (!forced && block.dataset.widow !== '0') {
+      const lines = lineCount(block);
+
+      if (lines >= 2) {
+        const lineHeight = block.offsetHeight / lines;
+        const fits = Math.floor((limit - top) / lineHeight);
+
+        /* одна строка сверху или снизу — некрасиво, уводим абзац */
+        if (fits >= 2 && lines - fits >= 2) continue;
+      }
     }
 
     page += 1;

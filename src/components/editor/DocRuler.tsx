@@ -10,9 +10,6 @@ interface Props {
   paddingRight?: number;
   /** Позиции табуляции текущего абзаца */
   tabStops?: TabStop[];
-  /** Тип, который поставится при щелчке по линейке */
-  tabAlign?: TabAlign;
-  onTabAlign?: () => void;
   onAddTab?: (positionCm: number) => void;
   onRemoveTab?: (positionCm: number) => void;
   /** Захват границы поля мышью */
@@ -23,6 +20,29 @@ interface Props {
   /** Двойной щелчок по линейке — окно параметров страницы, как в Word */
   onPageSetup?: () => void;
 }
+
+/** Переключатель типа позиции табуляции — живёт в уголке линеек */
+export const TabAlignCorner = ({
+  tabAlign = 'left',
+  onTabAlign,
+}: {
+  tabAlign?: TabAlign;
+  onTabAlign?: () => void;
+}) => {
+  const current = TAB_ALIGN_LABELS.find((t) => t.value === tabAlign);
+
+  return (
+    <button
+      type="button"
+      title={`Тип позиции табуляции: ${current?.label ?? ''}`}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onTabAlign}
+      className="flex h-[15px] w-[15px] items-center justify-center rounded-[2px] border border-[hsl(0_0%_72%)] bg-white text-[9px] leading-none hover:border-[hsl(var(--win-title))]"
+    >
+      {current?.sign ?? '⌐'}
+    </button>
+  );
+};
 
 const SIGN: Record<TabAlign, string> = {
   left: '⌐',
@@ -39,8 +59,6 @@ const DocRuler = ({
   padding,
   paddingRight,
   tabStops = [],
-  tabAlign = 'left',
-  onTabAlign,
   onAddTab,
   onRemoveTab,
   onDragMargin,
@@ -57,8 +75,6 @@ const DocRuler = ({
   /* деления считаем по настоящей ширине полосы набора */
   const marks = Math.floor((width - pad - padRight) / cm);
 
-  const current = TAB_ALIGN_LABELS.find((t) => t.value === tabAlign);
-
   /* щелчок по линейке ставит позицию там, куда попали */
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onAddTab) return;
@@ -73,18 +89,10 @@ const DocRuler = ({
   };
 
   return (
-    <div className="flex h-[20px] shrink-0 items-center justify-center border-b border-[hsl(var(--win-ribbon-border))] bg-[hsl(0_0%_96%)]">
-      {/* переключатель типа позиции — левый край линейки, как в Word */}
-      <button
-        type="button"
-        title={`Тип позиции табуляции: ${current?.label ?? ''}`}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={onTabAlign}
-        className="absolute left-1 flex h-[16px] w-[18px] items-center justify-center rounded-[2px] border border-[hsl(0_0%_72%)] bg-white text-[10px] leading-none hover:border-[hsl(var(--win-title))]"
-      >
-        {current?.sign ?? '⌐'}
-      </button>
-
+    <div
+      className="sticky top-0 z-[25] flex h-[20px] shrink-0 items-center border-b border-[hsl(var(--win-ribbon-border))] bg-[hsl(0_0%_96%)]"
+      style={{ width }}
+    >
       <div
         className="relative h-[15px] cursor-pointer"
         style={{ width }}

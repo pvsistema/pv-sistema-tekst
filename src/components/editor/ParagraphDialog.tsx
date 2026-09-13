@@ -71,9 +71,13 @@ const Num = ({
 /** Окно «Абзац»: выравнивание, отступы и интервалы с образцом */
 const ParagraphDialog = ({ open, initial, onClose, onApply, onTabs }: Props) => {
   const [f, setF] = useState<ParaFormat>(initial);
+  const [pane, setPane] = useState<'indents' | 'flow'>('indents');
 
   useEffect(() => {
-    if (open) setF(initial);
+    if (open) {
+      setF(initial);
+      setPane('indents');
+    }
   }, [open, initial]);
 
   if (!open) return null;
@@ -115,7 +119,78 @@ const ParagraphDialog = ({ open, initial, onClose, onApply, onTabs }: Props) => 
           </button>
         </div>
 
-        <div className="space-y-4 p-4">
+        <div className="flex gap-1 border-b border-slate-300 px-4 pt-3">
+          {[
+            { id: 'indents' as const, label: 'Отступы и интервалы' },
+            { id: 'flow' as const, label: 'Положение на странице' },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setPane(t.id)}
+              className={`rounded-t-[3px] border border-b-0 px-3 py-1.5 text-[12px] ${
+                pane === t.id
+                  ? 'border-slate-300 bg-white font-medium'
+                  : 'border-transparent text-slate-600 hover:bg-white/60'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {pane === 'flow' && (
+          <div className="space-y-2.5 p-4">
+            <p className="text-[11px] font-semibold text-slate-700">
+              Разбивка на страницы
+            </p>
+
+            {[
+              {
+                key: 'widowControl' as const,
+                label: 'Запрет висячих строк',
+                hint: 'Не оставлять одну строку абзаца на странице',
+              },
+              {
+                key: 'keepWithNext' as const,
+                label: 'Не отрывать от следующего',
+                hint: 'Заголовок уйдёт на новый лист вместе со своим текстом',
+              },
+              {
+                key: 'keepLines' as const,
+                label: 'Не разрывать абзац',
+                hint: 'Абзац целиком переносится на следующую страницу',
+              },
+              {
+                key: 'pageBreakBefore' as const,
+                label: 'С новой страницы',
+                hint: 'Перед абзацем всегда начинается новый лист',
+              },
+            ].map((o) => (
+              <label
+                key={o.key}
+                className="flex cursor-pointer items-start gap-2 rounded-[2px] px-1 py-[3px] hover:bg-white/70"
+              >
+                <input
+                  type="checkbox"
+                  checked={f[o.key]}
+                  onChange={(e) => patch({ [o.key]: e.target.checked })}
+                  className="mt-[2px] h-3.5 w-3.5 accent-[hsl(var(--win-title))]"
+                />
+                <span>
+                  <span className="block text-[12px] text-slate-800">
+                    {o.label}
+                  </span>
+                  <span className="block text-[10px] leading-tight text-slate-500">
+                    {o.hint}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <div className={`space-y-4 p-4 ${pane === 'flow' ? 'hidden' : ''}`}>
           <div>
             <p className="mb-2 text-[11px] font-semibold text-slate-700">
               Общие
